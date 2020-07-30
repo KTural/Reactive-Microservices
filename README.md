@@ -10,3 +10,7 @@
 * **[**AKKA**](https://akka.io/)** - **Toolkit for building highly concurrent,distributed,resilient,message-driven applications for Java and Scala**
 * **[**Microservices**](https://en.wikipedia.org/wiki/Microservices)** - **Architectural style that structures application as collection of highly maintainable,testable services**
 * **[**Docker**](https://www.ibm.com/cloud/learn/docker)** - **Open Source platform for building, deploying, and managing containerized applications.**
+
+
+![Event Storming](./images/event-storming.png "Event Storming")
+
