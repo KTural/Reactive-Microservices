@@ -1,6 +1,6 @@
 # Reactive Microservices Engineering and Design
 
-# **Reactive-Account** #
+# **Reactive Account** #
 
 [![IBM](https://developer.ibm.com/developer/tutorials/reactive-in-practice-12/images/ibm-arch.jpg)](https://developer.ibm.com/technologies/reactive-systems/)
 
