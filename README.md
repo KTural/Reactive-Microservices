@@ -11,6 +11,13 @@
 * **[**Microservices**](https://en.wikipedia.org/wiki/Microservices)** - **Architectural style that structures application as collection of highly maintainable,testable services**
 * **[**Docker**](https://www.ibm.com/cloud/learn/docker)** - **Open Source platform for building, deploying, and managing containerized applications.**
 
+### Design Techniques and Principles
+
+* **[**Domain-Driven Design**](https://en.wikipedia.org/wiki/Domain-driven_design)** -  **Approach to develop software for complex needs by deeply connecting the implementation to an evolving model of the core business concepts**
+* **[**Reactive Principles**](https://www.reactivemanifesto.org/)**: 
+
+**![Reactive Principles](./images/reactive-principles.png "Reactive Principles")**
+
+* **[**Event Storming**](https://en.wikipedia.org/wiki/Event_storming)** - **Workshop-based method to quickly find out what is happening in the domain of a software program**
 
 ![Event Storming](./images/event-storming.png "Event Storming")
-
