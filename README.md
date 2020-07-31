@@ -21,3 +21,23 @@
 * **[**Event Storming**](https://en.wikipedia.org/wiki/Event_storming)** - **Workshop-based method to quickly find out what is happening in the domain of a software program**
 
 ![Event Storming](./images/event-storming.png "Event Storming")
+
+
+### Installation of neccessary packages
+
+Install the dependencies:
+
+```sh
+# Check whether python installed:
+$ python --version
+
+# Check whether pip installed:
+$ python -m pip --version
+
+# If above all installed:
+$ pip install -r requirements.txt
+
+# Try upgrading pip:
+$ pip install --upgrade pip
+```
+
