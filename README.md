@@ -41,12 +41,28 @@ $ pip install --upgrade pip
 ```
 
 
-
 ### Project Visualization, Implementation, Design Details
 
 ![Keys](./images/keys.png "Keys")
 
 ![Main Domains](./images/main-domains.png "Main Domains")
 
+
+# Reactive Account Design: Main Outlook 
+
+
 ![Reactive Account](./images/reactive-account.png "Reactive Account")
+
+
+# All domains inside Reactive Account (separetely)
+
+
+![Account Domain](./images/account-domain.png "Account Domain")
+
+![Payment Domain](./images/payment-domain.png "Payment Domain")
+
+![Billing Domain](./images/billing-domain.png "Billing Domain")
+
+
+
 
