@@ -42,7 +42,7 @@ $ pip install --upgrade pip
 
 
 
-### Project Visualization
+### Project Visualization, Implementation, Design Details
 
 ![Keys](./images/keys.png "Keys")
 
