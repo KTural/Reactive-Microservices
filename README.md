@@ -41,14 +41,14 @@ $ pip install --upgrade pip
 ```
 
 
-### Project Visualization, Implementation, Design Details
+### Project Visualization, Implementation, Design and Architecture Details
 
 ![Keys](./images/keys.png "Keys")
 
 ![Main Domains](./images/main-domains.png "Main Domains")
 
 
-# Reactive Account Design: Main Outlook 
+# Reactive Account Architecture: Main Outlook 
 
 
 ![Reactive Account](./images/reactive-account.png "Reactive Account")
