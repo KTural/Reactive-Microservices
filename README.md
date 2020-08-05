@@ -70,4 +70,9 @@ $ pip install --upgrade pip
 ![Product Definition/Development Parameters](./images/payment-parameters.png "Product definition parameters")
 
 
+# General View of Domain Event Connections as Actors during technical implementation
+
+
+![Actors Description](./images/actor-view.png "Actors Description")
+
 
