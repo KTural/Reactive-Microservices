@@ -64,5 +64,10 @@ $ pip install --upgrade pip
 ![Billing Domain](./images/billing-domain.png "Billing Domain")
 
 
+# Product Definition/Development Parameters (for Student and Normal packages)
+
+
+![Product Definition/Development Parameters](./images/payment-parameters.png "Product definition parameters")
+
 
 
