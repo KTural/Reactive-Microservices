@@ -28,22 +28,30 @@ hs_err_pid*
 # Ignore all Java files
 *.java
 
-# Ignore file named README.md
-REAME.md
-
-
 # sbt specific
 .cache/
 .history/
 .lib/
 dist/*
-target/
+target/**/*
 lib_managed/
 src_managed/
-project/boot/
-project/plugins/project/
+project/**/*
+sbt-dist/**/*
 
 # Scala-IDE specific
 .scala_dependencies
 .worksheet
 .idea
+
+# gradle files
+.gradle/**/*
+
+# classpath and more
+_/**/*
+.classpath
+.project
+.settings/org.eclipse.buildship.core.prefs
+.git 
+.vscode/**/*
+bin/**/*

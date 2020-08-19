@@ -21,7 +21,6 @@
 
 ![Event Storming](./images/event-storming.png "Event Storming")
 
-
 ### Installation of neccessary packages
 
 Install the dependencies:
@@ -41,14 +40,14 @@ $ pip install --upgrade pip
 ```
 
 
-### Project Visualization, Implementation, Design and Architecture Details
+### Project Visualization, Implementation, Architecture and Design details
 
 ![Keys](./images/keys.png "Keys")
 
 ![Main Domains](./images/main-domains.png "Main Domains")
 
 
-# Reactive Account Architecture: Main Outlook 
+# Reactive Account Architecture and Design: Main Outlook 
 
 
 ![Reactive Account](./images/reactive-account.png "Reactive Account")
@@ -74,5 +73,3 @@ $ pip install --upgrade pip
 
 
 ![Actors Description](./images/actor-view.png "Actors Description")
-
-
