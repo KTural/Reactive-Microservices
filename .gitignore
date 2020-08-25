@@ -25,9 +25,6 @@ hs_err_pid*
 # Ignore all Scala files
 *.sc
 
-# Ignore all Java files
-*.java
-
 # sbt specific
 .cache/
 .history/
@@ -50,7 +47,6 @@ sbt-dist/**/*
 # classpath and more
 _/**/*
 .classpath
-.project
 .settings/org.eclipse.buildship.core.prefs
 .git 
 .vscode/**/*
