@@ -42,131 +42,23 @@ public class Billing extends AbstractBehavior<Account.Command> {
         }
     }
 
-    public static final class CheckBillingBalance implements Account.Command {
+    static enum Passivate implements Account.Command {
+        INSTANCE;
+    }
 
-        final Double balance;
-        protected ActorRef<WithdrawVerified> verify;
-        protected ActorRef<WithdrawRejected> reject;
-        protected ActorRef<DepositVerified> deposit;
+    public static Behavior<Account.Command> create(String accountId, Double accountBalance, Double amount) {
 
-        public CheckBillingBalance(final Double balance) {
-
-                this.balance = balance;
-
-        }
+        return Behaviors.setup(context -> new Billing(context, accountId, accountBalance, amount));
 
     }
 
-    public static final class WithdrawVerified {
-        
-        final long withdrawProcessId;
-        final long numberOfATMFeeWithdrawals;
-        final Double amount;
+    private final String accountId;
+    private final Double accountBalance;
+    
+    protected long numberOfFeeWithdrawals;
+    protected long numberOfFeeDeposits;
 
-        public WithdrawVerified(final long withdrawProcessId, 
-            final long numberOfATMFeeWithdrawals, final Double amount) {
 
-                this.withdrawProcessId = withdrawProcessId;
-                this.numberOfATMFeeWithdrawals = numberOfATMFeeWithdrawals;
-                this.amount = amount;
-
-            }
-
-    }
-
-    public static final class WithdrawRejected {
-
-        final long withdrawProcessId;
-        protected CheckBillingBalance checkBalance;
-
-        public WithdrawRejected(final long withdrawProcessId) {
-
-                this.withdrawProcessId = withdrawProcessId;
-
-            }
-
-    }
-
-    public static final class DepositVerified {
-
-        final long depositProcessId;
-        final long numberOfDeposits;
-        final Double amount;
-        protected CheckBillingBalance checkBalance;
-
-        public DepositVerified(final long depositProcessId, final long numberOfDeposits, 
-            final Double amount) {
-
-                this.depositProcessId = depositProcessId;
-                this.numberOfDeposits = numberOfDeposits;
-                this.amount = amount;
-
-            }
-
-    }
-
-    public static final class DebitWithdrawnAccount implements Account.Command {
-
-        final long withdrawProcessId;
-        final Double balance;
-        protected WithdrawVerified withdraw;
-        final String userPackage;
-        protected ActorRef<WithdrawalCompleted> replyTo;
-
-        public DebitWithdrawnAccount(final long withdrawProcessId, final Double balance,
-            final String userPackage) {
-
-                this.withdrawProcessId = withdrawProcessId;
-                this.balance = balance;
-                this.userPackage = userPackage;
-
-            }
-
-    }
-
-    public static final class CreditDepositedAccount implements Account.Command {
-
-        final long depositProcessId;
-        final Double balance;
-        protected DepositVerified deposit;
-        final String userPackage;
-        protected ActorRef<DepositCompleted> replyTo;
-
-        public CreditDepositedAccount(final long depositProcessId, final Double balance, 
-            final String userPackage) {
-
-                this.depositProcessId = depositProcessId;
-                this.balance = balance;
-                this.userPackage = userPackage;
-
-            }
-
-    }
-
-    public static final class WithdrawalCompleted {
-
-        final long withdrawProcessId;
-        protected DebitWithdrawnAccount debit;
-
-        public WithdrawalCompleted(final long withdrawProcessId) {
-
-            this.withdrawProcessId = withdrawProcessId;
-
-        }
-
-    }
-
-    public static final class DepositCompleted {
-
-        final long depositProcessId;
-        protected CreditDepositedAccount credit;
-
-        public DepositCompleted(final long depositProcessId) {
-
-            this.depositProcessId = depositProcessId;
-
-        }
-    }
 
 
 }
