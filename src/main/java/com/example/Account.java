@@ -212,6 +212,126 @@ public class Account extends AbstractBehavior<Account.Command> {
                     }
     }
 
+    public static final class SubmitWithdrawalOrDepositOrder implements Command {
+
+        final Double balance;
+        final Double amount;
+        protected ActorRef<WithdrawalVerified> verify;
+        protected ActorRef<WithdrawalRejected> reject;
+        protected ActorRef<DepositVerified> deposit;
+
+        public SubmitWithdrawalOrDepositOrder(final Double balance, final Double amount) {
+
+                        this.balance = balance;
+                        this.amount = amount;
+
+        }
+    }
+
+    public static final class WithdrawalVerified {
+        
+        final long withdrawProcessId;
+        final long numberOfATMFeeWithdrawals;
+        protected SubmitWithdrawalOrDepositOrder checkBalance;
+
+        public WithdrawalVerified(final long withdrawProcessId, 
+                    final long numberOfATMFeeWithdrawals) {
+
+                        this.withdrawProcessId = withdrawProcessId;
+                        this.numberOfATMFeeWithdrawals = numberOfATMFeeWithdrawals;
+
+            }
+    }
+
+    public static final class WithdrawalRejected {
+
+        final long withdrawProcessId;
+        protected SubmitWithdrawalOrDepositOrder checkBalance;
+
+        public WithdrawalRejected(final long withdrawProcessId) {
+
+                        this.withdrawProcessId = withdrawProcessId;
+
+        }
+    }
+
+    public static final class DepositVerified {
+
+        final long depositProcessId;
+        final long numberOfDeposits;
+        final Double amount;
+        protected SubmitWithdrawalOrDepositOrder checkBalance;
+
+        public DepositVerified(final long depositProcessId, final long numberOfDeposits, 
+                    final Double amount) {
+
+                        this.depositProcessId = depositProcessId;
+                        this.numberOfDeposits = numberOfDeposits;
+                        this.amount = amount;
+
+        }
+    }
+
+    public static final class DebitWithdrawnAccount implements Account.Command {
+
+        final long withdrawProcessId;
+        final Double balance;
+        protected WithdrawalVerified withdraw;
+        final String userPackage;
+        protected ActorRef<WithdrawalCompleted> replyTo;
+
+        public DebitWithdrawnAccount(final long withdrawProcessId, final Double balance,
+                    final String userPackage) {
+
+                        this.withdrawProcessId = withdrawProcessId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+
+        }
+    }    
+
+    public static final class WithdrawalCompleted {
+
+        final long withdrawProcessId;
+        protected DebitWithdrawnAccount debit;
+
+        public WithdrawalCompleted(final long withdrawProcessId) {
+
+                        this.withdrawProcessId = withdrawProcessId;
+
+        }
+    }
+    
+    public static final class CreditDepositedAccount implements Account.Command {
+
+        final long depositProcessId;
+        final Double balance;
+        protected DepositVerified deposit;
+        final String userPackage;
+        protected ActorRef<DepositCompleted> replyTo;
+
+        public CreditDepositedAccount(final long depositProcessId, final Double balance, 
+                    final String userPackage) {
+
+                        this.depositProcessId = depositProcessId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+
+        }
+    }    
+
+    public static final class DepositCompleted {
+
+        final long depositProcessId;
+        protected CreditDepositedAccount credit;
+
+        public DepositCompleted(final long depositProcessId) {
+
+                        this.depositProcessId = depositProcessId;
+
+        }
+    }    
+
     static enum Passivate implements Command {
         INSTANCE
     }
@@ -228,8 +348,6 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private final String transferStatus;
     protected long numberOfPaymentOrderRequests;
-    protected long numberOfATMFeeWithdrawals;
-    protected long numberOfATMFeeDeposits;
 
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
             final Double amount) {
@@ -241,8 +359,6 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         transferStatus = "Withdraw";
         numberOfPaymentOrderRequests = 0;
-        numberOfATMFeeWithdrawals = 0;
-        numberOfATMFeeDeposits = 0;
 
         context.getLog().info("Account actor is created with :: id {}, balance {}, currency {} ", accountId, accountBalance, currency);
 
@@ -281,11 +397,11 @@ public class Account extends AbstractBehavior<Account.Command> {
 
             if (transferStatus == "Withdraw") {
 
-                numberOfATMFeeWithdrawals += 1;                
+                              
 
             } else if (transferStatus == "Deposit") {
 
-                numberOfATMFeeDeposits += 1;
+                
 
             }
 
