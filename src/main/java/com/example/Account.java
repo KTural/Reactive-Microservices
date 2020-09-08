@@ -144,26 +144,19 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class InstructOppositeAccount implements Command {
 
-        final long paymentOrderId;
+        protected DebitCurrentAccount instruct;
         final boolean accountInstruction;
-        final long currency;
-        final long balance;
-        final ActorRef<Payment.IdentifyRouteToOppositeAccount> amount;
-        final ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveBankId;
-        final ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveAccountId;
+        final Double balance;
+        final Double amount;
+        protected ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveBankId;
+        protected ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveAccountId;
 
-        public InstructOppositeAccount(final long paymentOrderId, final boolean accountInstruction, final long currency,
-                    final long balance, final ActorRef<Payment.IdentifyRouteToOppositeAccount> amount,
-                    final ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveBankId,
-                    final ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveAccountId) {
+        public InstructOppositeAccount(final boolean accountInstruction, final Double balance, 
+                    final Double amount) {
 
-                        this.paymentOrderId = paymentOrderId;
                         this.accountInstruction = accountInstruction;
-                        this.currency = currency;
                         this.balance = balance;
                         this.amount = amount;
-                        this.receiveBankId = receiveBankId;
-                        this.receiveAccountId = receiveAccountId;
 
         }
     }
@@ -353,6 +346,8 @@ public class Account extends AbstractBehavior<Account.Command> {
     protected long normalRequestsOrOccurences;
     protected long normalPackagePaymentFee;
 
+    protected boolean oppositeAccountInstruction;
+
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
             final Double amount) {
 
@@ -375,6 +370,8 @@ public class Account extends AbstractBehavior<Account.Command> {
         normalPackagePaymentOrderLimit = 5;
         normalRequestsOrOccurences = 0;
         normalPackagePaymentFee = 10;
+
+        oppositeAccountInstruction = true;
 
         context.getLog().info("Account actor is created with :: id - %s, balance - %.2f, currency %s ", accountId,
                 accountBalance, currency);
@@ -511,11 +508,15 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         getContext().getLog().info("Account is Debited. Current Balance : %.2f %s ", debitAccount.balance, this.currency);
 
+        this.getContext().getSelf().tell(new InstructOppositeAccount(this.oppositeAccountInstruction,
+        debitAccount.balance, debitAccount.check.paymentOrder.amount));         
+
         return this;
 
     }
     
     private Behavior<Command> onInstructOppositeAccount(final InstructOppositeAccount instructAccount) {
+
 
         return this;
 
