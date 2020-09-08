@@ -346,7 +346,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     private final Double accountBalance;
     private final String currency;
 
-    private final String transferStatus;
+    private final String withdrawalOrDepositStatus;
     protected long numberOfPaymentOrderRequests;
 
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
@@ -357,7 +357,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         this.accountBalance = accountBalance;
         this.currency = "CZK";
 
-        transferStatus = "Withdraw";
+        withdrawalOrDepositStatus = "Withdraw";
         numberOfPaymentOrderRequests = 0;
 
         context.getLog().info("Account actor is created with :: id {}, balance {}, currency {} ", accountId, accountBalance, currency);
@@ -373,6 +373,9 @@ public class Account extends AbstractBehavior<Account.Command> {
             .onMessage(DebitCurrentAccount.class, this::onDebitCurrentAccount)
             .onMessage(InstructOppositeAccount.class, this::onInstructOppositeAccount)
             .onMessage(CompletePaymentOrder.class, this::onCompletePaymentOrder)
+            .onMessage(SubmitWithdrawalOrDepositOrder.class, this::onSubmitWithdrawalOrDepositOrder)
+            .onMessage(DebitWithdrawnAccount.class, this::onDebitWithdrawnAccount)
+            .onMessage(CreditDepositedAccount.class, this::onCreditDepositedAccount)
             .onMessage(Passivate.class, m -> Behaviors.stopped())
             .onSignal(PostStop.class, signal -> onPostStop())
             .build();
@@ -393,23 +396,13 @@ public class Account extends AbstractBehavior<Account.Command> {
     private Behavior<Command> onCheckAccountBalance(final CheckAccountBalance checkBalance) {
 
         getContext().getLog().info("Checking balance for Payment Order Id = {} ", checkBalance.paymentOrder.paymentOrderId);
+
         if (checkBalance.paymentOrder.amount <= this.accountBalance) {
-
-            if (transferStatus == "Withdraw") {
-
-                              
-
-            } else if (transferStatus == "Deposit") {
-
-                
-
-            }
 
             numberOfPaymentOrderRequests += 1;
 
-
             checkBalance.verify.tell(new PaymentOrderVerified(checkBalance.paymentOrder.paymentOrderId, 
-            transferStatus, numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount, this.accountBalance, "VERIFIED"));
+            withdrawalOrDepositStatus, numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount, this.accountBalance, "VERIFIED"));
 
             getContext().getLog().info("Balance for Payment Order Id = {}, status = {} ", checkBalance.paymentOrder.paymentOrderId,
             "VERIFIED");
@@ -423,7 +416,6 @@ public class Account extends AbstractBehavior<Account.Command> {
             "REJECTED");
 
         }
-
 
         return this;
 
@@ -442,6 +434,25 @@ public class Account extends AbstractBehavior<Account.Command> {
     }
     
     private Behavior<Command> onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
+
+        return this;
+
+    }
+
+    private Behavior<Command> onSubmitWithdrawalOrDepositOrder(
+                            final SubmitWithdrawalOrDepositOrder order) {
+
+        return this;                        
+
+    }
+
+    private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
+
+        return this;
+
+    }
+
+    private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
 
         return this;
 
