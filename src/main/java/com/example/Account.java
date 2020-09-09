@@ -341,7 +341,9 @@ public class Account extends AbstractBehavior<Account.Command> {
     }
 
     static enum Passivate implements Command {
+
         INSTANCE
+
     }
 
     public static Behavior<Command> create(String accountId, Double accountBalance, Double amount) {
