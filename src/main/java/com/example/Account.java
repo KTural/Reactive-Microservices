@@ -1,5 +1,7 @@
 package com.example;
 
+import com.example.Payment.*;
+
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -148,17 +150,38 @@ public class Account extends AbstractBehavior<Account.Command> {
         final boolean accountInstruction;
         final Double balance;
         final Double amount;
-        protected ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveBankId;
-        protected ActorRef<Payment.IdentifyRouteToOppositeAccount> receiveAccountId;
+        protected String oppositeAccountId;
+        protected String bankId;
+        protected ActorRef<OppositeAccountInstructed> instructOppositeAccount;
 
         public InstructOppositeAccount(final boolean accountInstruction, final Double balance, 
                     final Double amount) {
 
                         this.accountInstruction = accountInstruction;
-                        this.balance = balance;
-                        this.amount = amount;
+                        this.balance = instruct.balance;
+                        this.amount = instruct.check.paymentOrder.amount;
 
         }
+    }
+
+    public static final class OppositeAccountInstructed {
+
+        protected InstructOppositeAccount oppositeAccount;
+        final Double amount;
+        final long paymentOrderId;
+        final Double balance;
+        final String replyTo;
+
+        public OppositeAccountInstructed(final Double amount, final long paymentOrderId,
+                    final Double balance, final String replyTo) {
+
+                        this.amount = amount;
+                        this.paymentOrderId = paymentOrderId;
+                        this.balance = balance;
+                        this.replyTo = replyTo;
+
+        }
+
     }
 
     public static final class CompletePaymentOrder implements Command {
@@ -517,6 +540,15 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Behavior<Command> onInstructOppositeAccount(final InstructOppositeAccount instructAccount) {
 
+        getContext().getLog().info("Transfer Request amount : %.2f %s. Instructing Opposite Account with Id : %s.", 
+        instructAccount.amount, this.currency, instructAccount.oppositeAccountId);
+
+        instructAccount.instructOppositeAccount.tell(new OppositeAccountInstructed(instructAccount.amount, 
+        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "OPPOSITE ACCOUNT IS INSTRUCTED : SUCCESS"));
+
+        this.getContext().getSelf().tell(new IdentifyRouteToOppositeAccount(instructAccount.instruct.check.paymentOrder.accountId,
+        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.oppositeAccountId, 
+        instructAccount.amount, instructAccount.bankId));
 
         return this;
 
