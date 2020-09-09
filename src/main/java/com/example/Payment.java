@@ -2,6 +2,8 @@ package com.example;
 
 import java.util.Optional;
 
+import com.example.Account.*;
+
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -14,24 +16,23 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     public static final class IdentifyRouteToOppositeAccount implements Account.Command {
 
-        final long internalAccountId;
-        final long externalAccountId;
-        final boolean insideBankSystem;
-        final long amount;
-        final ActorRef<CreditInternalAccount> instructInternalAccount;
-        final ActorRef<CreditExternalAccount> instructExternalAccount;
+        final String internalAccountId;
+        final long paymentOrderId;
+        final String oppositeAccountId;
+        final Double amount;
+        final String bankId;
+        protected Account.InstructOppositeAccount identify;
+        protected ActorRef<CreditInternalAccount> instructInternalAccount;
+        protected ActorRef<CreditExternalAccount> instructExternalAccount;
 
-        public IdentifyRouteToOppositeAccount(final long internalAccountId, final long externalAccountId,
-                    final boolean insideBankSystem, final long amount, 
-                    final ActorRef<CreditInternalAccount> instructInternalAccount, 
-                    final ActorRef<CreditExternalAccount> instructExternalAccount) {
+        public IdentifyRouteToOppositeAccount(final String internalAccountId, final long paymentOrderId,
+                    final String oppositeAccountId, final Double amount, final String bankId) {
 
                         this.internalAccountId = internalAccountId;
-                        this.externalAccountId = externalAccountId;
-                        this.insideBankSystem = insideBankSystem;
+                        this.paymentOrderId = paymentOrderId;
+                        this.oppositeAccountId = oppositeAccountId;
                         this.amount = amount;
-                        this.instructInternalAccount = instructInternalAccount;
-                        this.instructExternalAccount = instructExternalAccount;
+                        this.bankId = bankId;
 
                     }
     }
