@@ -48,4 +48,12 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
         
     }
+
+
+    public static final class OppositeAccountCredited {
+
+
+
+    }
+    
 }
