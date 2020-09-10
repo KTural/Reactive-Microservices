@@ -10,46 +10,92 @@ import akka.actor.typed.javadsl.Receive;
 
 public class Payment extends AbstractBehavior<Account.Command> {
 
-    public static final class IdentifyRouteToOppositeAccount implements Account.Command {
+    public static final class IdentifyRouteToExternalAccount implements Account.Command {
 
         final String internalAccountId;
         final long paymentOrderId;
-        final String oppositeAccountId;
+        final String externalAccountId;
         final Double amount;
         final String bankId;
-        protected Account.InstructOppositeAccount identify;
-        protected ActorRef<CreditInternalAccount> instructInternalAccount;
-        protected ActorRef<CreditExternalAccount> instructExternalAccount;
+        protected Account.InstructExternalAccount identify;
+        protected ActorRef<InstructInternalAccount> instructInternalAccount;
+        protected ActorRef<CreditExternalAccount> creditExternalAccount;
 
-        public IdentifyRouteToOppositeAccount(final String internalAccountId, final long paymentOrderId,
-                    final String oppositeAccountId, final Double amount, final String bankId) {
+        public IdentifyRouteToExternalAccount(final String internalAccountId, final long paymentOrderId,
+                    final String externalAccountId, final Double amount, final String bankId) {
 
-                        this.internalAccountId = internalAccountId;
-                        this.paymentOrderId = paymentOrderId;
-                        this.oppositeAccountId = oppositeAccountId;
-                        this.amount = amount;
-                        this.bankId = bankId;
+                        this.internalAccountId = identify.instruct.check.paymentOrder.accountId;
+                        this.paymentOrderId = identify.instruct.check.paymentOrder.paymentOrderId;
+                        this.externalAccountId = identify.externalAccountId;
+                        this.amount = identify.amount;
+                        this.bankId = identify.bankId;
 
                     }
     }
 
-    public static final class CreditInternalAccount implements Account.Command {
+    public static final class InstructInternalAccount implements Account.Command {
 
+        final Double amount;
+        final long paymentOrderId;
+        final String internalAccountId;
+        protected IdentifyRouteToExternalAccount instructAccount;
+        protected ActorRef<Account.InternalAccountInstructed> instructInternalAccount;
 
+        public InstructInternalAccount(final Double amount, final long paymentOrderId, final String internalAccountId) {
+
+                        this.amount = instructAccount.amount;
+                        this.paymentOrderId = instructAccount.paymentOrderId;
+                        this.internalAccountId = instructAccount.internalAccountId;
+
+        }
 
     }
 
     public static final class CreditExternalAccount implements Account.Command {
 
+        final boolean paymentNetworkRequest;
+        final Double amount;
+        final long paymentOrderId;
+        final String internalAccountId;
+        final String externalAccountId;
+        protected IdentifyRouteToExternalAccount creditAccount;
+        protected ActorRef<ExternalAccountCredited> creditExternalAccount;
 
+        public CreditExternalAccount(final boolean paymentNetworkRequest, final Double amount, final long paymentOrderId, 
+                        final String internalAccountId, final String externalAccountId) {
+
+                            this.paymentNetworkRequest = paymentNetworkRequest;
+                            this.amount = creditAccount.amount;
+                            this.paymentOrderId = creditAccount.paymentOrderId;
+                            this.internalAccountId = creditAccount.internalAccountId;
+                            this.externalAccountId = creditAccount.externalAccountId;
+
+        }
         
     }
 
 
-    public static final class OppositeAccountCredited {
+    public static final class ExternalAccountCredited {
 
+        final Double amount;
+        final String internalAccountId;
+        final String externalAccountId;
+        final String bankId;
+        final long paymentOrderId;
+        final String replyTo;
+        protected CreditExternalAccount externalAccount;
 
+        public ExternalAccountCredited(final Double amount, final String internalAccountId, final String externalAccountId, 
+                        final String bankId, final long paymentOrderId, final String replyTo) {
 
+                            this.amount = amount;
+                            this.internalAccountId = internalAccountId;
+                            this.externalAccountId = externalAccountId;
+                            this.bankId = bankId;
+                            this.paymentOrderId = paymentOrderId;
+                            this.replyTo = replyTo;
+
+        }
     }
 
     static enum Passivate implements Account.Command {
@@ -98,14 +144,21 @@ public class Payment extends AbstractBehavior<Account.Command> {
     @Override
     public Receive<Account.Command> createReceive() {
 
-        return newReceiveBuilder().onMessage(CreditInternalAccount.class, this::onCreditInternalAccount)
+        return newReceiveBuilder().onMessage(IdentifyRouteToExternalAccount.class, this::onIdentifyRouteToExternalAccount)
+                        .onMessage(InstructInternalAccount.class, this::onInstructInternalAccount)
                         .onMessage(CreditExternalAccount.class, this::onCreditExternalAccount)
                         .onMessage(Passivate.class, m -> Behaviors.stopped()).onSignal(PostStop.class, signal -> onPostStop())
                         .build();
 
     }
 
-    private Behavior<Account.Command> onCreditInternalAccount(final CreditInternalAccount creditIntAccount) {
+    private Behavior<Account.Command> onIdentifyRouteToExternalAccount(final IdentifyRouteToExternalAccount identifyRoute) {
+
+                        return this;
+
+    }
+
+    private Behavior<Account.Command> onInstructInternalAccount(final InstructInternalAccount instructIntAccount) {
 
                         getContext().getLog().info(" External Account Instruction is SUCCESSFULL! - STATUS: %b ", externalAccountInstructed);
 
