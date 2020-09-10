@@ -187,16 +187,19 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         final Double amount;
         final String internalAccountId;
+        final String externalAccountId;
         final String bankId;
         final long paymentOrderId;
         final String replyTo;
         protected Payment.InstructInternalAccount accountInstructed;
 
         public InternalAccountInstructed(final Double amount, final String internalAccountId, 
-                    final String bankId, final long paymentOrderId, final String replyTo) {
+                    final String externalAccountId, final String bankId, final long paymentOrderId, 
+                    final String replyTo) {
 
                         this.amount = amount;
                         this.internalAccountId = internalAccountId;
+                        this.externalAccountId = externalAccountId;
                         this.bankId = bankId;
                         this.paymentOrderId = paymentOrderId;
                         this.replyTo = replyTo;
