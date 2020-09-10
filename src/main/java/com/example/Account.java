@@ -210,17 +210,21 @@ public class Account extends AbstractBehavior<Account.Command> {
     public static final class CompletePaymentOrder implements Command {
 
         final long paymentOrderId;
+        final String bankId;
+        final String externalAccountId;
         final String accountId;
-        final long amount;
-        final ActorRef<PaymentOrderProcessed> confirmation;
+        final Double amount;
+        protected Payment.CreditExternalAccount creditExternal;
+        protected ActorRef<PaymentOrderProcessed> confirmation;
 
-        public CompletePaymentOrder(final long paymentOrderId, final String accountId, final long amount,
-                    final ActorRef<PaymentOrderProcessed> confirmation) {
+        public CompletePaymentOrder(final long paymentOrderId, final String bankId, final String externalAccountId,
+        final String accountId, final Double amount) {
 
-                        this.paymentOrderId = paymentOrderId;
-                        this.accountId = accountId;
-                        this.amount = amount;
-                        this.confirmation = confirmation;
+                        this.paymentOrderId = creditExternal.paymentOrderId;
+                        this.bankId = creditExternal.creditAccount.bankId;
+                        this.externalAccountId = creditExternal.externalAccountId;
+                        this.accountId = creditExternal.creditAccount.internalAccountId;
+                        this.amount = creditExternal.amount;
 
         }
     }
