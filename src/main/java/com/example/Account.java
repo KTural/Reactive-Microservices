@@ -181,7 +181,27 @@ public class Account extends AbstractBehavior<Account.Command> {
                         this.replyTo = replyTo;
 
         }
+    }
 
+    public static final class InternalAccountInstructed {
+
+        final Double amount;
+        final String internalAccountId;
+        final String bankId;
+        final long paymentOrderId;
+        final String replyTo;
+        protected Payment.CreditInternalAccount accountInstructed;
+
+        public InternalAccountInstructed(final Double amount, final String internalAccountId, 
+                    final String bankId, final long paymentOrderId, final String replyTo) {
+
+                        this.amount = amount;
+                        this.internalAccountId = internalAccountId;
+                        this.bankId = bankId;
+                        this.paymentOrderId = paymentOrderId;
+                        this.replyTo = replyTo;
+
+        }
     }
 
     public static final class CompletePaymentOrder implements Command {
