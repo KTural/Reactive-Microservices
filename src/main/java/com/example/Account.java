@@ -144,17 +144,17 @@ public class Account extends AbstractBehavior<Account.Command> {
         }
     }
 
-    public static final class InstructOppositeAccount implements Command {
+    public static final class InstructExternalAccount implements Command {
 
         protected DebitCurrentAccount instruct;
         final boolean accountInstruction;
         final Double balance;
         final Double amount;
-        protected String oppositeAccountId;
+        protected String externalAccountId;
         protected String bankId;
-        protected ActorRef<OppositeAccountInstructed> instructOppositeAccount;
+        protected ActorRef<ExternalAccountInstructed> instructExternalAccount;
 
-        public InstructOppositeAccount(final boolean accountInstruction, final Double balance, 
+        public InstructExternalAccount(final boolean accountInstruction, final Double balance, 
                     final Double amount) {
 
                         this.accountInstruction = accountInstruction;
@@ -164,15 +164,15 @@ public class Account extends AbstractBehavior<Account.Command> {
         }
     }
 
-    public static final class OppositeAccountInstructed {
+    public static final class ExternalAccountInstructed {
 
-        protected InstructOppositeAccount oppositeAccount;
+        protected InstructExternalAccount externalAccount;
         final Double amount;
         final long paymentOrderId;
         final Double balance;
         final String replyTo;
 
-        public OppositeAccountInstructed(final Double amount, final long paymentOrderId,
+        public ExternalAccountInstructed(final Double amount, final long paymentOrderId,
                     final Double balance, final String replyTo) {
 
                         this.amount = amount;
@@ -190,7 +190,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String bankId;
         final long paymentOrderId;
         final String replyTo;
-        protected Payment.CreditInternalAccount accountInstructed;
+        protected Payment.InstructInternalAccount accountInstructed;
 
         public InternalAccountInstructed(final Double amount, final String internalAccountId, 
                     final String bankId, final long paymentOrderId, final String replyTo) {
@@ -391,7 +391,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     protected long normalRequestsOrOccurences;
     protected long normalPackagePaymentFee;
 
-    protected boolean oppositeAccountInstruction;
+    protected boolean externalAccountInstruction;
 
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
             final Double amount) {
@@ -416,7 +416,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         normalRequestsOrOccurences = 0;
         normalPackagePaymentFee = 10;
 
-        oppositeAccountInstruction = true;
+        externalAccountInstruction = true;
 
         context.getLog().info("Account actor is created with :: id - %s, balance - %.2f, currency %s ", accountId,
                 accountBalance, currency);
@@ -429,7 +429,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         return newReceiveBuilder().onMessage(SubmitPaymentOrder.class, this::onSubmitPaymentOrder)
                 .onMessage(CheckAccountBalance.class, this::onCheckAccountBalance)
                 .onMessage(DebitCurrentAccount.class, this::onDebitCurrentAccount)
-                .onMessage(InstructOppositeAccount.class, this::onInstructOppositeAccount)
+                .onMessage(InstructExternalAccount.class, this::onInstructExternalAccount)
                 .onMessage(CompletePaymentOrder.class, this::onCompletePaymentOrder)
                 .onMessage(SubmitWithdrawalOrDepositOrder.class, this::onSubmitWithdrawalOrDepositOrder)
                 .onMessage(DebitWithdrawnAccount.class, this::onDebitWithdrawnAccount)
@@ -553,23 +553,23 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         getContext().getLog().info("Account is Debited. Current Balance : %.2f %s ", debitAccount.balance, this.currency);
 
-        this.getContext().getSelf().tell(new InstructOppositeAccount(this.oppositeAccountInstruction,
+        this.getContext().getSelf().tell(new InstructExternalAccount(this.externalAccountInstruction,
         debitAccount.balance, debitAccount.check.paymentOrder.amount));         
 
         return this;
 
     }
     
-    private Behavior<Command> onInstructOppositeAccount(final InstructOppositeAccount instructAccount) {
+    private Behavior<Command> onInstructExternalAccount(final InstructExternalAccount instructAccount) {
 
-        getContext().getLog().info("Transfer Request amount : %.2f %s. Instructing Opposite Account with Id : %s.", 
-        instructAccount.amount, this.currency, instructAccount.oppositeAccountId);
+        getContext().getLog().info("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s.", 
+        instructAccount.amount, this.currency, instructAccount.externalAccountId);
 
-        instructAccount.instructOppositeAccount.tell(new OppositeAccountInstructed(instructAccount.amount, 
-        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "OPPOSITE ACCOUNT IS INSTRUCTED : SUCCESS"));
+        instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(instructAccount.amount, 
+        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "EXTERNAL ACCOUNT IS INSTRUCTED : SUCCESS"));
 
-        this.getContext().getSelf().tell(new IdentifyRouteToOppositeAccount(instructAccount.instruct.check.paymentOrder.accountId,
-        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.oppositeAccountId, 
+        this.getContext().getSelf().tell(new IdentifyRouteToExternalAccount(instructAccount.instruct.check.paymentOrder.accountId,
+        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.externalAccountId, 
         instructAccount.amount, instructAccount.bankId));
 
         return this;
