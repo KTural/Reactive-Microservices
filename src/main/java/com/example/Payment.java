@@ -1,5 +1,7 @@
 package com.example;
 
+import com.example.Account.*;
+
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -17,9 +19,8 @@ public class Payment extends AbstractBehavior<Account.Command> {
         final String externalAccountId;
         final Double amount;
         final String bankId;
+        protected boolean paymentNetworkRequest;
         protected Account.InstructExternalAccount identify;
-        protected ActorRef<InstructInternalAccount> instructInternalAccount;
-        protected ActorRef<CreditExternalAccount> creditExternalAccount;
 
         public IdentifyRouteToExternalAccount(final String internalAccountId, final long paymentOrderId,
                     final String externalAccountId, final Double amount, final String bankId) {
@@ -105,29 +106,29 @@ public class Payment extends AbstractBehavior<Account.Command> {
     }
 
     public static Behavior<Account.Command> create(String accountId, String bankId,
-                        boolean externalAccountInstructed, boolean externalAccountCredited,
+                        boolean internalAccountInstructed, boolean externalAccountCredited,
                         boolean paymentNetworkConnected) {
 
-                            return Behaviors.setup(context -> new Payment(context, accountId, bankId, externalAccountInstructed,
+                            return Behaviors.setup(context -> new Payment(context, accountId, bankId, internalAccountInstructed,
                             externalAccountCredited, paymentNetworkConnected));
 
     }
 
     private final String accountId;
     private final String bankId;
-    private final boolean externalAccountInstructed;
+    private final boolean internalAccountInstructed;
     private final boolean externalAccountCredited;
     private final boolean paymentNetworkConnected;
 
 
     private Payment(final ActorContext<Account.Command> context, final String accountId, final String bankId, 
-                        final boolean externalAccountInstructed, final boolean externalAccountCredited,
+                        final boolean internalAccountInstructed, final boolean externalAccountCredited,
                         final boolean paymentNetworkConnected) {
 
                             super(context);
                             this.accountId = accountId;
                             this.bankId = bankId;
-                            this.externalAccountInstructed = externalAccountInstructed;
+                            this.internalAccountInstructed = internalAccountInstructed;
                             this.externalAccountCredited = externalAccountCredited;
                             this.paymentNetworkConnected = paymentNetworkConnected;
 
@@ -136,7 +137,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
                             context.getLog().info(" Payment Network is connected - STATUS: %b ", paymentNetworkConnected);
 
                             context.getLog().info(" Account Domain instructed Payment Domain. External Account Instructed - STATUS: %b ",
-                            externalAccountInstructed);
+                            internalAccountInstructed);
 
 
     }
@@ -154,19 +155,41 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onIdentifyRouteToExternalAccount(final IdentifyRouteToExternalAccount identifyRoute) {
 
+                        getContext().getLog().info(" External Account is within Bank's system with Id - %s ", identifyRoute.externalAccountId);
+                        
+                        this.getContext().getSelf().tell(new InstructInternalAccount(identifyRoute.amount, identifyRoute.paymentOrderId, 
+                        identifyRoute.internalAccountId));
+
+                        this.getContext().getSelf().tell(new CreditExternalAccount(identifyRoute.paymentNetworkRequest,
+                        identifyRoute.amount, identifyRoute.paymentOrderId, identifyRoute.internalAccountId, identifyRoute.externalAccountId));                        
+
                         return this;
 
     }
 
     private Behavior<Account.Command> onInstructInternalAccount(final InstructInternalAccount instructIntAccount) {
 
-                        getContext().getLog().info(" External Account Instruction is SUCCESSFULL! - STATUS: %b ", externalAccountInstructed);
+                        getContext().getLog().info(" Internal Account Instruction is SUCCESSFULL! - STATUS: %b ", internalAccountInstructed);
+
+                        instructIntAccount.instructInternalAccount.tell(new InternalAccountInstructed(instructIntAccount.amount,
+                        instructIntAccount.internalAccountId, instructIntAccount.instructAccount.externalAccountId,
+                        instructIntAccount.instructAccount.bankId, instructIntAccount.paymentOrderId, "VERIFIED!"));
 
                         return this;
 
     }
 
-    private Behavior<Account.Command> onCreditExternalAccount(final CreditExternalAccount creditIntAccount) {
+    private Behavior<Account.Command> onCreditExternalAccount(final CreditExternalAccount creditExtAccount) {
+
+                        getContext().getLog().info(" External Account is Credited SUCCESSFULLY! - STATUS: %b ", externalAccountCredited);
+
+                        creditExtAccount.creditExternalAccount.tell(new ExternalAccountCredited(creditExtAccount.amount,
+                        creditExtAccount.internalAccountId, creditExtAccount.creditAccount.externalAccountId, 
+                        creditExtAccount.creditAccount.bankId, creditExtAccount.paymentOrderId, "VERIFIED!"));
+
+                        this.getContext().getSelf().tell(new CompletePaymentOrder(creditExtAccount.paymentOrderId, 
+                        creditExtAccount.creditAccount.bankId, creditExtAccount.externalAccountId, 
+                        creditExtAccount.creditAccount.internalAccountId, creditExtAccount.amount));
 
                         return this;
 
