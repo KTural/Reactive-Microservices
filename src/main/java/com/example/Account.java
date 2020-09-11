@@ -214,17 +214,21 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String externalAccountId;
         final String accountId;
         final Double amount;
+        final String date;
+        final Double balance;
         protected Payment.CreditExternalAccount creditExternal;
         protected ActorRef<PaymentOrderProcessed> confirmation;
 
         public CompletePaymentOrder(final long paymentOrderId, final String bankId, final String externalAccountId,
-        final String accountId, final Double amount) {
+                    final String accountId, final Double amount, final String date, final Double balance) {
 
                         this.paymentOrderId = creditExternal.paymentOrderId;
                         this.bankId = creditExternal.creditAccount.bankId;
                         this.externalAccountId = creditExternal.externalAccountId;
                         this.accountId = creditExternal.creditAccount.internalAccountId;
                         this.amount = creditExternal.amount;
+                        this.date = creditExternal.creditAccount.identify.instruct.check.paymentOrder.date;
+                        this.balance = creditExternal.creditAccount.identify.balance;
 
         }
     }
@@ -232,21 +236,30 @@ public class Account extends AbstractBehavior<Account.Command> {
     public static final class PaymentOrderProcessed {
 
         final long paymentOrderId;
-        final boolean paymentProcessed;
-        final ActorRef<Billing.CalculatePaymentOrderFee> amount;
-        final ActorRef<Billing.CalculatePaymentOrderFee> accountId;
-        final ActorRef<Billing.CalculatePaymentOrderFee> numberOfPaymentOrderRequests;
+        final String bankId;
+        final String externalAccountId;
+        final String accountId;
+        final Double amount;
+        final String date;
+        final Double balance;
+        final boolean paymentProcessed;        
+        final String replyTo;
+        protected CompletePaymentOrder completeOrder;
 
-        public PaymentOrderProcessed(final long paymentOrderId, final boolean paymentProcessed,
-                    final ActorRef<Billing.CalculatePaymentOrderFee> amount,
-                    final ActorRef<Billing.CalculatePaymentOrderFee> accountId,
-                    final ActorRef<Billing.CalculatePaymentOrderFee> numberOfPaymentOrderRequests) {
+        public PaymentOrderProcessed(final long paymentOrderId, final String bankId,
+                    final String externalAccountId, final String accountId, final Double amount,
+                    final String date, final Double balance, final boolean paymentProcessed,
+                    final String replyTo) {
 
-                        this.paymentOrderId = paymentOrderId;
+                        this.paymentOrderId = completeOrder.paymentOrderId;
+                        this.bankId = completeOrder.bankId;
+                        this.externalAccountId = completeOrder.externalAccountId;
+                        this.accountId = completeOrder.accountId;
+                        this.amount = completeOrder.amount;
+                        this.date = completeOrder.date;
+                        this.balance = completeOrder.balance;
                         this.paymentProcessed = paymentProcessed;
-                        this.amount = amount;
-                        this.accountId = accountId;
-                        this.numberOfPaymentOrderRequests = numberOfPaymentOrderRequests;
+                        this.replyTo = replyTo;
 
         }
     }
