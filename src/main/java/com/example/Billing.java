@@ -77,6 +77,12 @@ public class Billing extends AbstractBehavior<Account.Command> {
         }
     }
 
+    public static final class CalculateEndOfMonthBill implements Account.Command {
+
+        protected ActorRef<EndOfMonthBillCalculated> calculateBill;
+
+    }
+
     static enum Passivate implements Account.Command {
         INSTANCE;
     }
@@ -105,6 +111,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
         return newReceiveBuilder().onMessage(CalculatePaymentOrderFee.class, this::onCalculatePaymentOrderFee)
             .onMessage(DebitWithdrawnAccount.class, this::onDebitWithdrawnAccount)
             .onMessage(CreditDepositedAccount.class, this::onCreditDepositedAccount)
+            .onMessage(CalculateEndOfMonthBill.class, this::onCalculateEndOfMonthBill)
             .onMessage(Passivate.class, m -> Behaviors.stopped())
             .onSignal(PostStop.class, signal -> onPostStop())
             .build();
@@ -124,6 +131,12 @@ public class Billing extends AbstractBehavior<Account.Command> {
     }
 
     private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
+
+        return this;
+
+    }
+
+    private Behavior<Command> onCalculateEndOfMonthBill(final CalculateEndOfMonthBill calculateMonthly) {
 
         return this;
 
