@@ -308,23 +308,6 @@ public class Account extends AbstractBehavior<Account.Command> {
         }
     }
 
-    public static final class DebitWithdrawnAccount implements Account.Command {
-
-        final long withdrawProcessId;
-        final Double balance;
-        protected WithdrawalVerified withdraw;
-        final String userPackage;
-        protected ActorRef<WithdrawalCompleted> replyTo;
-
-        public DebitWithdrawnAccount(final long withdrawProcessId, final Double balance, final String userPackage) {
-
-                        this.withdrawProcessId = withdrawProcessId;
-                        this.balance = balance;
-                        this.userPackage = userPackage;
-
-        }
-    }
-
     public static final class WithdrawalCompleted {
 
         final long withdrawProcessId;
@@ -333,23 +316,6 @@ public class Account extends AbstractBehavior<Account.Command> {
         public WithdrawalCompleted(final long withdrawProcessId) {
 
                         this.withdrawProcessId = withdrawProcessId;
-
-        }
-    }
-
-    public static final class CreditDepositedAccount implements Account.Command {
-
-        final long depositProcessId;
-        final Double balance;
-        protected DepositVerified deposit;
-        final String userPackage;
-        protected ActorRef<DepositCompleted> replyTo;
-
-        public CreditDepositedAccount(final long depositProcessId, final Double balance, final String userPackage) {
-
-                        this.depositProcessId = depositProcessId;
-                        this.balance = balance;
-                        this.userPackage = userPackage;
 
         }
     }
@@ -424,7 +390,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         externalAccountInstruction = true;
 
-        context.getLog().info("Account actor is created with :: id - %s, balance - %.2f, currency %s ", accountId,
+        context.getLog().info("Account actor is created with :: Account Id - %s, balance - %.2f, currency %s ", accountId,
                 accountBalance, currency);
 
     }
@@ -438,9 +404,8 @@ public class Account extends AbstractBehavior<Account.Command> {
                 .onMessage(InstructExternalAccount.class, this::onInstructExternalAccount)
                 .onMessage(CompletePaymentOrder.class, this::onCompletePaymentOrder)
                 .onMessage(SubmitWithdrawalOrDepositOrder.class, this::onSubmitWithdrawalOrDepositOrder)
-                .onMessage(DebitWithdrawnAccount.class, this::onDebitWithdrawnAccount)
-                .onMessage(CreditDepositedAccount.class, this::onCreditDepositedAccount)
-                .onMessage(Passivate.class, m -> Behaviors.stopped()).onSignal(PostStop.class, signal -> onPostStop())
+                .onMessage(Passivate.class, m -> Behaviors.stopped())
+                .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
 
     }
@@ -588,7 +553,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         Date date = new Date(System.currentTimeMillis());
 
-        completeOrder.confirmation.tell(new PaymentOrderProcessed("TRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %f",
+        completeOrder.confirmation.tell(new PaymentOrderProcessed("TRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %.2f",
         completeOrder.paymentOrderId, completeOrder.accountId, 
         completeOrder.bankId, completeOrder.externalAccountId, 
         date, completeOrder.amount, completeOrder.balance));
@@ -600,22 +565,9 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     }
 
-    private Behavior<Command> onSubmitWithdrawalOrDepositOrder(
-                            final SubmitWithdrawalOrDepositOrder order) {
+    private Behavior<Command> onSubmitWithdrawalOrDepositOrder(final SubmitWithdrawalOrDepositOrder order) {
 
         return this;                        
-
-    }
-
-    private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
-
-        return this;
-
-    }
-
-    private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
-
-        return this;
 
     }
     
