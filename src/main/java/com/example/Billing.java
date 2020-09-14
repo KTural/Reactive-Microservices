@@ -1,7 +1,5 @@
 package com.example;
 
-import java.util.Optional;
-
 import com.example.Account.*;
 
 import akka.actor.typed.ActorRef;
@@ -35,13 +33,46 @@ public class Billing extends AbstractBehavior<Account.Command> {
     public static final class PaymentOrderFeeCalculated {
 
         final String feeType;
-        final CalculatePaymentOrderFee calculateFee;
+        protected CalculatePaymentOrderFee calculateFee;
 
-        public PaymentOrderFeeCalculated(final String feeType, 
-                    final CalculatePaymentOrderFee calculateFee) {
+        public PaymentOrderFeeCalculated(final String feeType) {
 
                         this.feeType = feeType;
-                        this.calculateFee = calculateFee;
+
+        }
+    }
+
+    public static final class DebitWithdrawnAccount implements Account.Command {
+
+        final long withdrawProcessId;
+        final Double balance;
+        protected WithdrawalVerified withdraw;
+        final String userPackage;
+        protected ActorRef<WithdrawalCompleted> replyTo;
+
+        public DebitWithdrawnAccount(final long withdrawProcessId, final Double balance, final String userPackage) {
+
+                        this.withdrawProcessId = withdrawProcessId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+
+        }
+
+    }
+
+    public static final class CreditDepositedAccount implements Account.Command {
+
+        final long depositProcessId;
+        final Double balance;
+        protected DepositVerified deposit;
+        final String userPackage;
+        protected ActorRef<DepositCompleted> replyTo;
+
+        public CreditDepositedAccount(final long depositProcessId, final Double balance, final String userPackage) {
+
+                        this.depositProcessId = depositProcessId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
 
         }
     }
@@ -50,19 +81,60 @@ public class Billing extends AbstractBehavior<Account.Command> {
         INSTANCE;
     }
 
-    public static Behavior<Account.Command> create(String accountId, Double accountBalance, Double amount) {
+    public static Behavior<Account.Command> create() {
 
-        return Behaviors.setup(context -> new Billing(context, accountId, accountBalance, amount));
+        return Behaviors.setup(context -> new Billing(context));
 
     }
-
-    private final String accountId;
-    private final Double accountBalance;
     
     protected long numberOfFeeWithdrawals;
     protected long numberOfFeeDeposits;
 
 
+    private Billing(final ActorContext<Command> context) {
 
+        super(context);
+
+        context.getLog().info("Billing actor is created with");
+
+    }
+
+    @Override
+    public Receive<Command> createReceive() {
+
+        return newReceiveBuilder().onMessage(CalculatePaymentOrderFee.class, this::onCalculatePaymentOrderFee)
+            .onMessage(DebitWithdrawnAccount.class, this::onDebitWithdrawnAccount)
+            .onMessage(CreditDepositedAccount.class, this::onCreditDepositedAccount)
+            .onMessage(Passivate.class, m -> Behaviors.stopped())
+            .onSignal(PostStop.class, signal -> onPostStop())
+            .build();
+
+    }
+
+    private Behavior<Command> onCalculatePaymentOrderFee(final CalculatePaymentOrderFee calculateFee) {
+
+        return this;
+
+    }
+
+    private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
+
+        return this;
+
+    }
+
+    private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
+
+        return this;
+
+    }
+
+    private Behavior<Command> onPostStop() {
+
+        getContext().getLog().info("Billing actor is stopped");
+        
+        return Behaviors.stopped();
+
+    }
 
 }
