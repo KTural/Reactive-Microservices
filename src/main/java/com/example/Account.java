@@ -19,6 +19,22 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public interface Command {}
 
+
+    public static final class CheckSubmissionCommand implements Command {
+
+        protected SubmitPaymentOrder paymentOrder;
+        protected SubmitWithdrawalOrder withdrawOrder;
+        protected SubmitDepositOrder depositOrder;
+        final String replyTo;
+
+        public CheckSubmissionCommand(final String replyTo) {
+
+            this.replyTo = replyTo;
+
+        }
+
+    }
+
     public static final class SubmitPaymentOrder implements Command {
 
         final long paymentOrderId;
@@ -72,21 +88,17 @@ public class Account extends AbstractBehavior<Account.Command> {
     public static final class PaymentOrderVerified {
         
         final long paymentOrderId;
-        final String transferStatus;
         final long numberOfPaymentOrderRequests;
         final Double amount;
         final Double accountBalance;
         final String orderStatus;
         
         public PaymentOrderVerified(final long paymentOrderId,
-                    final String transferStatus,
                     final long numberOfPaymentOrderRequests, 
                     final Double amount,
-                    final Double accountBalance,
-                    final String orderStatus) {
+                    final Double accountBalance, final String orderStatus) {
 
                         this.paymentOrderId = paymentOrderId;
-                        this.transferStatus = transferStatus;
                         this.numberOfPaymentOrderRequests = numberOfPaymentOrderRequests;
                         this.amount = amount;
                         this.accountBalance = accountBalance;
@@ -103,8 +115,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String orderStatus;
 
         public PaymentOrderRejected(final long paymentOrderId,
-                    final Double amount, final Double balance,
-                    final String orderStatus) {
+                    final Double amount, final Double balance, final String orderStatus) {
 
                         this.paymentOrderId = paymentOrderId;
                         this.amount = amount;
@@ -250,15 +261,14 @@ public class Account extends AbstractBehavior<Account.Command> {
         }
     }
 
-    public static final class SubmitWithdrawalOrDepositOrder implements Command {
+    public static final class SubmitWithdrawalOrder implements Command {
 
         final Double balance;
         final Double amount;
         protected ActorRef<WithdrawalVerified> verify;
         protected ActorRef<WithdrawalRejected> reject;
-        protected ActorRef<DepositVerified> deposit;
 
-        public SubmitWithdrawalOrDepositOrder(final Double balance, final Double amount) {
+        public SubmitWithdrawalOrder(final Double balance, final Double amount) {
 
                         this.balance = balance;
                         this.amount = amount;
@@ -266,11 +276,26 @@ public class Account extends AbstractBehavior<Account.Command> {
         }
     }
 
+    public static final class SubmitDepositOrder implements Command {
+
+        final Double balance;
+        final Double amount;
+        protected ActorRef<DepositVerified> deposit;
+
+        public SubmitDepositOrder(final Double balance, final Double amount) {
+
+                        this.balance = balance;
+                        this.amount = amount;
+
+        }
+
+    }
+
     public static final class WithdrawalVerified {
 
         final long withdrawProcessId;
         final long numberOfATMFeeWithdrawals;
-        protected SubmitWithdrawalOrDepositOrder checkBalance;
+        protected SubmitWithdrawalOrder checkBalance;
 
         public WithdrawalVerified(final long withdrawProcessId, final long numberOfATMFeeWithdrawals) {
 
@@ -283,7 +308,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     public static final class WithdrawalRejected {
 
         final long withdrawProcessId;
-        protected SubmitWithdrawalOrDepositOrder checkBalance;
+        protected SubmitWithdrawalOrder checkBalance;
 
         public WithdrawalRejected(final long withdrawProcessId) {
 
@@ -297,7 +322,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         final long depositProcessId;
         final long numberOfDeposits;
         final Double amount;
-        protected SubmitWithdrawalOrDepositOrder checkBalance;
+        protected SubmitDepositOrder checkBalance;
 
         public DepositVerified(final long depositProcessId, final long numberOfDeposits, final Double amount) {
 
@@ -332,25 +357,30 @@ public class Account extends AbstractBehavior<Account.Command> {
         }
     }
 
+    public static final class EndOfMonthBillCalculated {
+
+    }
+
     static enum Passivate implements Command {
 
         INSTANCE
 
     }
 
-    public static Behavior<Command> create(String accountId, Double accountBalance, Double amount) {
+    public static Behavior<Command> create(String accountId, Double accountBalance, Double amount, String mainCommand) {
 
-        return Behaviors.setup(context -> new Account(context, accountId, accountBalance, amount));
+        return Behaviors.setup(context -> new Account(context, accountId, accountBalance, amount, mainCommand));
 
     }
 
     private final String accountId;
     private final Double accountBalance;
+    private final Double amount;
+    private final String mainCommand;
     private final String currency;
 
     protected String userPackage;
 
-    private final String withdrawalOrDepositStatus;
     protected long numberOfPaymentOrderRequests;
 
     protected long studentPackagePaymentOrderLimit;
@@ -366,16 +396,17 @@ public class Account extends AbstractBehavior<Account.Command> {
     protected boolean externalAccountInstruction;
 
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
-            final Double amount) {
+            final Double amount, final String mainCommand) {
 
         super(context);
         this.accountId = accountId;
         this.accountBalance = accountBalance;
+        this.amount = amount;
+        this.mainCommand = mainCommand;
         this.currency = "CZK";
 
         userPackage = "Student";
 
-        withdrawalOrDepositStatus = "Withdraw";
         numberOfPaymentOrderRequests = 0;
 
         studentPackagePaymentOrderLimit = 3;
@@ -390,23 +421,31 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         externalAccountInstruction = true;
 
-        context.getLog().info("Account actor is created with :: Account Id - %s, balance - %.2f, currency %s ", accountId,
-                accountBalance, currency);
+        context.getLog().info("Account actor is created with :: Account Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f", 
+        accountId, accountBalance, currency, mainCommand, amount);
 
     }
 
     @Override
     public Receive<Command> createReceive() {
 
-        return newReceiveBuilder().onMessage(SubmitPaymentOrder.class, this::onSubmitPaymentOrder)
+        return newReceiveBuilder().onMessage(CheckSubmissionCommand.class, this::onCheckSubmissionCommand)
+                .onMessage(SubmitPaymentOrder.class, this::onSubmitPaymentOrder)
                 .onMessage(CheckAccountBalance.class, this::onCheckAccountBalance)
                 .onMessage(DebitCurrentAccount.class, this::onDebitCurrentAccount)
                 .onMessage(InstructExternalAccount.class, this::onInstructExternalAccount)
                 .onMessage(CompletePaymentOrder.class, this::onCompletePaymentOrder)
-                .onMessage(SubmitWithdrawalOrDepositOrder.class, this::onSubmitWithdrawalOrDepositOrder)
+                .onMessage(SubmitWithdrawalOrder.class, this::onSubmitWithdrawalOrder)
+                .onMessage(SubmitDepositOrder.class, this::onSubmitDepositOrder)
                 .onMessage(Passivate.class, m -> Behaviors.stopped())
                 .onSignal(PostStop.class, signal -> onPostStop())
                 .build();
+
+    }
+
+    private Behavior<Command> onCheckSubmissionCommand(final CheckSubmissionCommand checkSubmission) {
+
+        return this;
 
     }
 
@@ -432,7 +471,7 @@ public class Account extends AbstractBehavior<Account.Command> {
             numberOfPaymentOrderRequests += incrementRequestOrOccurence;
 
             checkBalance.verify.tell(new PaymentOrderVerified(checkBalance.paymentOrder.paymentOrderId,
-                    withdrawalOrDepositStatus, numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount,
+                    numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount,
                     this.accountBalance, "VERIFIED"));
 
             getContext().getLog().info("Balance for Payment Order Id = %d, status = %s ",
@@ -565,11 +604,17 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     }
 
-    private Behavior<Command> onSubmitWithdrawalOrDepositOrder(final SubmitWithdrawalOrDepositOrder order) {
+    private Behavior<Command> onSubmitWithdrawalOrder(final SubmitWithdrawalOrder withdrawOrder) {
 
         return this;                        
 
     }
+
+    private Behavior<Command> onSubmitDepositOrder(final SubmitDepositOrder depositOrder) {
+
+        return this;                        
+
+    }    
     
     private Behavior<Command> onPostStop() {
         getContext().getLog().info("Account actor is stopped with :: id - %s, balance - %.2f, currency - %s",
