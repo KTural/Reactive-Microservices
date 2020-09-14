@@ -2,6 +2,10 @@ package com.example;
 
 import com.example.Payment.*;
 
+import java.util.Date;
+
+import com.example.Billing.*;
+
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -234,31 +238,13 @@ public class Account extends AbstractBehavior<Account.Command> {
     }
 
     public static final class PaymentOrderProcessed {
-
-        final long paymentOrderId;
-        final String bankId;
-        final String externalAccountId;
-        final String accountId;
-        final Double amount;
-        final String date;
-        final Double balance;
-        final boolean paymentProcessed;        
+       
         final String replyTo;
-        protected CompletePaymentOrder completeOrder;
+        protected CompletePaymentOrder ProcessOrder;
 
-        public PaymentOrderProcessed(final long paymentOrderId, final String bankId,
-                    final String externalAccountId, final String accountId, final Double amount,
-                    final String date, final Double balance, final boolean paymentProcessed,
-                    final String replyTo) {
+        public PaymentOrderProcessed(final String replyTo, long paymentOrderId, String accountId, String bankId,
+                String externalAccountId, Date date, Double amount, Double balance) {
 
-                        this.paymentOrderId = completeOrder.paymentOrderId;
-                        this.bankId = completeOrder.bankId;
-                        this.externalAccountId = completeOrder.externalAccountId;
-                        this.accountId = completeOrder.accountId;
-                        this.amount = completeOrder.amount;
-                        this.date = completeOrder.date;
-                        this.balance = completeOrder.balance;
-                        this.paymentProcessed = paymentProcessed;
                         this.replyTo = replyTo;
 
         }
@@ -597,6 +583,18 @@ public class Account extends AbstractBehavior<Account.Command> {
     }
     
     private Behavior<Command> onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
+
+        getContext().getLog().info("Payment Order is Completed, now It is Processed!");
+
+        Date date = new Date(System.currentTimeMillis());
+
+        completeOrder.confirmation.tell(new PaymentOrderProcessed("TRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %f",
+        completeOrder.paymentOrderId, completeOrder.accountId, 
+        completeOrder.bankId, completeOrder.externalAccountId, 
+        date, completeOrder.amount, completeOrder.balance));
+        
+        this.getContext().getSelf().tell(new CalculatePaymentOrderFee(completeOrder.accountId, completeOrder.amount,
+        completeOrder.balance));
 
         return this;
 
