@@ -132,11 +132,11 @@ public class Payment extends AbstractBehavior<Account.Command> {
                             this.externalAccountCredited = externalAccountCredited;
                             this.paymentNetworkConnected = paymentNetworkConnected;
 
-                            context.getLog().info(" Payment actor is created with :: Account Id - %s, Bank Id - %s ", accountId, bankId);
+                            context.getLog().info("\n Payment actor is created with :: Account Id - %s, Bank Id - %s \n", accountId, bankId);
 
-                            context.getLog().info(" Payment Network is connected - STATUS: %b ", paymentNetworkConnected);
+                            context.getLog().info(" Payment Network is connected - STATUS: %b \n", paymentNetworkConnected);
 
-                            context.getLog().info(" Account Domain instructed Payment Domain. External Account Instructed - STATUS: %b ",
+                            context.getLog().info(" Account Domain instructed Payment Domain. External Account Instructed - STATUS: %b \n",
                             internalAccountInstructed);
 
 
@@ -155,7 +155,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onIdentifyRouteToExternalAccount(final IdentifyRouteToExternalAccount identifyRoute) {
 
-                        getContext().getLog().info(" External Account is within Bank's system with Id - %s ", identifyRoute.externalAccountId);
+                        getContext().getLog().info(" External Account is within Bank's system with Id - %s \n", identifyRoute.externalAccountId);
                         
                         this.getContext().getSelf().tell(new InstructInternalAccount(identifyRoute.amount, identifyRoute.paymentOrderId, 
                         identifyRoute.internalAccountId));
@@ -169,7 +169,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onInstructInternalAccount(final InstructInternalAccount instructIntAccount) {
 
-                        getContext().getLog().info(" Internal Account Instruction is SUCCESSFULL! - STATUS: %b ", internalAccountInstructed);
+                        getContext().getLog().info(" Internal Account Instruction is SUCCESSFULL! - STATUS: %b \n", internalAccountInstructed);
 
                         instructIntAccount.instructInternalAccount.tell(new InternalAccountInstructed(instructIntAccount.amount,
                         instructIntAccount.internalAccountId, instructIntAccount.instructAccount.externalAccountId,
@@ -181,7 +181,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onCreditExternalAccount(final CreditExternalAccount creditExtAccount) {
 
-                        getContext().getLog().info(" External Account is Credited SUCCESSFULLY! - STATUS: %b ", externalAccountCredited);
+                        getContext().getLog().info(" External Account is Credited SUCCESSFULLY! - STATUS: %b \n", externalAccountCredited);
 
                         creditExtAccount.creditExternalAccount.tell(new ExternalAccountCredited(creditExtAccount.amount,
                         creditExtAccount.internalAccountId, creditExtAccount.creditAccount.externalAccountId, 
@@ -199,11 +199,11 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onPostStop() {
 
-                        getContext().getLog().info("Payment actor is stopped with :: Account Id - %s, Bank Id - %s ", accountId, bankId);
+                        getContext().getLog().info("Payment actor is stopped with :: Account Id - %s, Bank Id - %s \n", accountId, bankId);
 
-                        getContext().getLog().info(" Payment Network is disconnected - STATUS: %b ", paymentNetworkConnected);
+                        getContext().getLog().info(" Payment Network is disconnected - STATUS: %b \n", paymentNetworkConnected);
 
-                        getContext().getLog().info(" Crediting External Account failed - STATUS: %b ", externalAccountCredited);
+                        getContext().getLog().info(" Crediting External Account failed - STATUS: %b \n", externalAccountCredited);
                         
                         return Behaviors.stopped();
 

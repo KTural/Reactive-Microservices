@@ -421,7 +421,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         externalAccountInstruction = true;
 
-        context.getLog().info("Account actor is created with :: Account Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f", 
+        context.getLog().info("\nAccount actor is created with :: Account Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f\n", 
         accountId, accountBalance, currency, mainCommand, amount);
 
     }
@@ -451,7 +451,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onSubmitPaymentOrder(final SubmitPaymentOrder paymentOrder) {
         getContext().getLog().info(
-                "Submit Payment Order id = %d command received with Account id = %s and Bank id = %d on %s ",
+                "Submit Payment Order id = %d command received with Account id = %s and Bank id = %d on %s \n",
                 paymentOrder.paymentOrderId, paymentOrder.accountId, paymentOrder.bankId, paymentOrder.date);
 
         paymentOrder.checkPaymentOrderId.tell(new PaymentOrderStatus(paymentOrder.paymentOrderId, "SUBMITTED"));
@@ -463,7 +463,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onCheckAccountBalance(final CheckAccountBalance checkBalance) {
 
-        getContext().getLog().info("Checking balance for Payment Order Id = %d ",
+        getContext().getLog().info("Checking balance for Payment Order Id = %d \n",
                 checkBalance.paymentOrder.paymentOrderId);
 
         if (checkBalance.paymentOrder.amount <= this.accountBalance) {
@@ -474,7 +474,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                     numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount,
                     this.accountBalance, "VERIFIED"));
 
-            getContext().getLog().info("Balance for Payment Order Id = %d, status = %s ",
+            getContext().getLog().info("Balance for Payment Order Id = %d, status = %s \n",
                     checkBalance.paymentOrder.paymentOrderId, "VERIFIED");
 
             this.getContext().getSelf().tell(new DebitCurrentAccount(checkBalance.paymentOrder.paymentOrderId, 
@@ -485,7 +485,7 @@ public class Account extends AbstractBehavior<Account.Command> {
             checkBalance.reject.tell(new PaymentOrderRejected(checkBalance.paymentOrder.paymentOrderId,
                     checkBalance.paymentOrder.amount, this.accountBalance, "REJECTED"));
 
-            getContext().getLog().info("Balance for Payment Order Id = %d, status = %s ",
+            getContext().getLog().info("Balance for Payment Order Id = %d, status = %s \n",
                     checkBalance.paymentOrder.paymentOrderId, "REJECTED");
 
         }
@@ -496,7 +496,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onDebitCurrentAccount(final DebitCurrentAccount debitAccount) {
 
-        getContext().getLog().info("Current Account Balance : %.2f %s. Offered packages below : `STUDENT` and `NORMAL` for Payment Order Id = %d ",
+        getContext().getLog().info("Current Account Balance : %.2f %s. Offered packages below : `STUDENT` and `NORMAL` for Payment Order Id = %d \n",
         debitAccount.balance, this.currency, debitAccount.check.paymentOrder.paymentOrderId);
 
         if (debitAccount.userPackage == "Student") {
@@ -510,7 +510,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                 debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s debited from Account", 
                 this.studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
 
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s", 
+                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
                 debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
 
             } else {
@@ -524,7 +524,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                 debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s debited from Account",
                 this.studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
 
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = {}", 
+                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
                 debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
 
             }
@@ -540,7 +540,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                 debitAccount.balance, this.normalRequestsOrOccurences, String.format("%.2f %s debited from Account", 
                 this.normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
 
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s", 
+                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
                 debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
 
             } else {
@@ -554,14 +554,14 @@ public class Account extends AbstractBehavior<Account.Command> {
                 debitAccount.balance, this.normalRequestsOrOccurences, String.format("%.2f %s debited from Account",
                 this.normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
 
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s", 
+                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
                 debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
 
             }                
 
         }
 
-        getContext().getLog().info("Account is Debited. Current Balance : %.2f %s ", debitAccount.balance, this.currency);
+        getContext().getLog().info("Account is Debited. Current Balance : %.2f %s \n", debitAccount.balance, this.currency);
 
         this.getContext().getSelf().tell(new InstructExternalAccount(this.externalAccountInstruction,
         debitAccount.balance, debitAccount.check.paymentOrder.amount));         
@@ -572,7 +572,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Behavior<Command> onInstructExternalAccount(final InstructExternalAccount instructAccount) {
 
-        getContext().getLog().info("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s.", 
+        getContext().getLog().info("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s. \n", 
         instructAccount.amount, this.currency, instructAccount.externalAccountId);
 
         instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(instructAccount.amount, 
@@ -588,11 +588,11 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Behavior<Command> onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
 
-        getContext().getLog().info("Payment Order is Completed, now It is Processed!");
+        getContext().getLog().info("Payment Order is Completed, now It is Processed! \n");
 
         Date date = new Date(System.currentTimeMillis());
 
-        completeOrder.confirmation.tell(new PaymentOrderProcessed("TRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %.2f",
+        completeOrder.confirmation.tell(new PaymentOrderProcessed("\nTRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %.2f\n",
         completeOrder.paymentOrderId, completeOrder.accountId, 
         completeOrder.bankId, completeOrder.externalAccountId, 
         date, completeOrder.amount, completeOrder.balance));
@@ -617,7 +617,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     }    
     
     private Behavior<Command> onPostStop() {
-        getContext().getLog().info("Account actor is stopped with :: id - %s, balance - %.2f, currency - %s",
+        getContext().getLog().info("Account actor is stopped with :: id - %s, balance - %.2f, currency - %s\n",
         accountId, accountBalance, currency);
         return Behaviors.stopped();
     }    

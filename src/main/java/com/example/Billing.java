@@ -144,7 +144,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onPostStop() {
 
-        getContext().getLog().info("Billing actor is stopped");
+        getContext().getLog().info("Billing actor is stopped \n");
         
         return Behaviors.stopped();
 
