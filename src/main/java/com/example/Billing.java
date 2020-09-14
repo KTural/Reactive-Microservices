@@ -2,6 +2,8 @@ package com.example;
 
 import java.util.Optional;
 
+import com.example.Account.*;
+
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.Behavior;
 import akka.actor.typed.PostStop;
@@ -14,16 +16,18 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     public static final class CalculatePaymentOrderFee implements Account.Command {
 
-        final long accountId;
+        final String accountId;
         final Double amount;
-        final ActorRef<PaymentOrderFeeCalculated> replyTo;
+        final Double balance;
+        protected CompletePaymentOrder billingComplete;
+        protected ActorRef<PaymentOrderFeeCalculated> replyTo;
   
-        public CalculatePaymentOrderFee(final long accountId, final Double amount,
-            final ActorRef<PaymentOrderFeeCalculated> replyTo) {
+        public CalculatePaymentOrderFee(final String accountId, final Double amount, 
+                    final Double balance) {
 
-                this.accountId = accountId;
-                this.amount = amount;
-                this.replyTo = replyTo;
+                        this.accountId = billingComplete.accountId;
+                        this.amount = billingComplete.amount;
+                        this.balance = billingComplete.balance;
 
         }
     }
@@ -34,10 +38,10 @@ public class Billing extends AbstractBehavior<Account.Command> {
         final CalculatePaymentOrderFee calculateFee;
 
         public PaymentOrderFeeCalculated(final String feeType, 
-            final CalculatePaymentOrderFee calculateFee) {
+                    final CalculatePaymentOrderFee calculateFee) {
 
-                this.feeType = feeType;
-                this.calculateFee = calculateFee;
+                        this.feeType = feeType;
+                        this.calculateFee = calculateFee;
 
         }
     }
