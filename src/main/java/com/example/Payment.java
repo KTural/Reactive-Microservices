@@ -19,7 +19,6 @@ public class Payment extends AbstractBehavior<Account.Command> {
         final String externalAccountId;
         final Double amount;
         final String bankId;
-        protected boolean paymentNetworkRequest;
         protected Account.InstructExternalAccount identify;
 
         public IdentifyRouteToExternalAccount(final String internalAccountId, final long paymentOrderId,
@@ -29,7 +28,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
                         this.paymentOrderId = identify.instruct.check.paymentOrder.paymentOrderId;
                         this.externalAccountId = identify.externalAccountId;
                         this.amount = identify.amount;
-                        this.bankId = identify.bankId;
+                        this.bankId = identify.instruct.check.paymentOrder.bankId;
 
                     }
     }
@@ -119,6 +118,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
     private final boolean internalAccountInstructed;
     private final boolean externalAccountCredited;
     private final boolean paymentNetworkConnected;
+    protected boolean paymentNetworkRequest;
 
 
     private Payment(final ActorContext<Account.Command> context, final String accountId, final String bankId, 
@@ -131,6 +131,8 @@ public class Payment extends AbstractBehavior<Account.Command> {
                             this.internalAccountInstructed = internalAccountInstructed;
                             this.externalAccountCredited = externalAccountCredited;
                             this.paymentNetworkConnected = paymentNetworkConnected;
+
+                            this.paymentNetworkRequest = false;
 
                             context.getLog().info("\n Payment actor is created with :: Account Id - %s, Bank Id - %s \n", accountId, bankId);
 
@@ -160,7 +162,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
                         this.getContext().getSelf().tell(new InstructInternalAccount(identifyRoute.amount, identifyRoute.paymentOrderId, 
                         identifyRoute.internalAccountId));
 
-                        this.getContext().getSelf().tell(new CreditExternalAccount(identifyRoute.paymentNetworkRequest,
+                        this.getContext().getSelf().tell(new CreditExternalAccount(this.paymentNetworkRequest,
                         identifyRoute.amount, identifyRoute.paymentOrderId, identifyRoute.internalAccountId, identifyRoute.externalAccountId));                        
 
                         return this;
