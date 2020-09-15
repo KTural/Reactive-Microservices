@@ -249,8 +249,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String replyTo;
         protected CompletePaymentOrder ProcessOrder;
 
-        public PaymentOrderProcessed(final String replyTo, long paymentOrderId, String accountId, String bankId,
-                String externalAccountId, Date date, Double amount, Double balance) {
+        public PaymentOrderProcessed(final String replyTo) {
 
                         this.replyTo = replyTo;
 
@@ -261,13 +260,22 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         final Double balance;
         final Double amount;
+        final long paymentOrderId;
+        final String bankId;
+        final Date date;
+        final String accountId;
         protected ActorRef<WithdrawalVerified> verify;
         protected ActorRef<WithdrawalRejected> reject;
 
-        public SubmitWithdrawalOrder(final Double balance, final Double amount) {
+        public SubmitWithdrawalOrder(final Double balance, final Double amount, final long paymentOrderId, final String bankId, 
+                    final Date date, final String accountId) {
 
                         this.balance = balance;
                         this.amount = amount;
+                        this.paymentOrderId = paymentOrderId;
+                        this.bankId = bankId;
+                        this.date = date;
+                        this.accountId = accountId;
 
         }
     }
@@ -276,12 +284,21 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         final Double balance;
         final Double amount;
+        final long paymentOrderId;
+        final String bankId;
+        final Date date;
+        final String accountId;                
         protected ActorRef<DepositVerified> deposit;
 
-        public SubmitDepositOrder(final Double balance, final Double amount) {
+        public SubmitDepositOrder(final Double balance, final Double amount, final long paymentOrderId, final String bankId, 
+                    final Date date, final String accountId) {
 
                         this.balance = balance;
                         this.amount = amount;
+                        this.paymentOrderId = paymentOrderId;
+                        this.bankId = bankId;
+                        this.date = date;
+                        this.accountId = accountId;
 
         }
 
@@ -289,71 +306,111 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class WithdrawalVerified {
 
-        final long withdrawProcessId;
-        final long numberOfATMFeeWithdrawals;
+        final String withdrawalId;
+        final String accountId;
+        final Date date;
         protected SubmitWithdrawalOrder checkBalance;
+        final String replyTo;
 
-        public WithdrawalVerified(final long withdrawProcessId, final long numberOfATMFeeWithdrawals) {
+        public WithdrawalVerified(final String withdrawalId, final String accountId, 
+                    final Date date, final String replyTo) {
 
-                        this.withdrawProcessId = withdrawProcessId;
-                        this.numberOfATMFeeWithdrawals = numberOfATMFeeWithdrawals;
+                        this.withdrawalId = withdrawalId;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.replyTo = replyTo;
 
         }
     }
 
     public static final class WithdrawalRejected {
 
-        final long withdrawProcessId;
+        final String withdrawalId;
+        final String accountId;
+        final Date date;
         protected SubmitWithdrawalOrder checkBalance;
+        final String replyTo;
 
-        public WithdrawalRejected(final long withdrawProcessId) {
+        public WithdrawalRejected(final String withdrawalId, final String accountId, 
+                    final Date date, final String replyTo) {
 
-                        this.withdrawProcessId = withdrawProcessId;
+                        this.withdrawalId = withdrawalId;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.replyTo = replyTo;
 
         }
     }
 
     public static final class DepositVerified {
 
-        final long depositProcessId;
-        final long numberOfDeposits;
-        final Double amount;
+        final String depositId;
+        final String accountId;
+        final Date date;
+        final String replyTo;
         protected SubmitDepositOrder checkBalance;
 
-        public DepositVerified(final long depositProcessId, final long numberOfDeposits, final Double amount) {
+        public DepositVerified(final String depositId, final String accountId, final Date date, final String replyTo) {
 
-                        this.depositProcessId = depositProcessId;
-                        this.numberOfDeposits = numberOfDeposits;
-                        this.amount = amount;
+                        this.depositId = depositId;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.replyTo = replyTo;
 
         }
     }
 
     public static final class WithdrawalCompleted {
 
-        final long withdrawProcessId;
+        final String withdrawalId;
+        final Double balance;
+        final String userPackage;
+        final String accountId;
+        final Date date;
+        final Double amount;
         protected DebitWithdrawnAccount debit;
 
-        public WithdrawalCompleted(final long withdrawProcessId) {
+        public WithdrawalCompleted(final String withdrawalId, final Double balance, final String userPackage, 
+                    final String accountId, final Date date, final Double amount) {
 
-                        this.withdrawProcessId = withdrawProcessId;
+                        this.withdrawalId = withdrawalId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.amount = amount;
 
         }
     }
 
     public static final class DepositCompleted {
 
-        final long depositProcessId;
+        final String depositId;
+        final Double balance;
+        final String userPackage;
+        final String accountId;
+        final Date date;
+        final Double amount;
         protected CreditDepositedAccount credit;
 
-        public DepositCompleted(final long depositProcessId) {
+        public DepositCompleted(final String depositId, final Double balance, final String userPackage, 
+                    final String accountId, final Date date, final Double amount) {
 
-                        this.depositProcessId = depositProcessId;
+                        this.depositId = depositId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.amount = amount;
 
         }
     }
 
     public static final class EndOfMonthBillCalculated {
+
+        public EndOfMonthBillCalculated() {
+
+        }
 
     }
 
@@ -364,10 +421,11 @@ public class Account extends AbstractBehavior<Account.Command> {
     }
 
     public static Behavior<Command> create(String accountId, Double accountBalance, Double amount, 
-                                        String mainCommand, String userPackage, long paymentOrderId, String bankId) {
+                                        String mainCommand, String userPackage, long paymentOrderId, String bankId,
+                                        String withdrawalId, String depositId) {
 
         return Behaviors.setup(context -> new Account(context, accountId, accountBalance, amount, mainCommand, userPackage, 
-        paymentOrderId, bankId));
+        paymentOrderId, bankId, withdrawalId, depositId));
 
     }
 
@@ -381,7 +439,10 @@ public class Account extends AbstractBehavior<Account.Command> {
     private final long paymentOrderId;
     private final String bankId;
 
-    private final String currency;
+    private final String withdrawalId;
+    private final String depositId;
+
+    final String currency;
 
     protected long numberOfPaymentOrderRequests;
 
@@ -400,7 +461,8 @@ public class Account extends AbstractBehavior<Account.Command> {
     Date date = new Date(System.currentTimeMillis());
 
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
-            final Double amount, final String mainCommand, final String userPackage, final long paymentOrderId, String bankId) {
+            final Double amount, final String mainCommand, final String userPackage, final long paymentOrderId, final String bankId, 
+            final String withdrawalId, final String depositId) {
 
         super(context);
 
@@ -411,6 +473,8 @@ public class Account extends AbstractBehavior<Account.Command> {
         this.userPackage = userPackage;
         this.paymentOrderId = paymentOrderId;
         this.bankId = bankId;
+        this.withdrawalId = withdrawalId;
+        this.depositId = depositId;
 
         this.currency = "CZK";
 
@@ -463,11 +527,13 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         } else if (this.mainCommand == "Withdraw") {
 
-                this.getContext().getSelf().tell(new SubmitWithdrawalOrder(this.accountBalance, this.amount));
+                this.getContext().getSelf().tell(new SubmitWithdrawalOrder(this.accountBalance, this.amount, 
+                this.paymentOrderId, this.bankId, this.date, this.accountId));
 
         } else if (this.mainCommand == "Deposit") {
 
-                this.getContext().getSelf().tell(new SubmitDepositOrder(this.accountBalance, this.amount));
+                this.getContext().getSelf().tell(new SubmitDepositOrder(this.accountBalance, this.amount,
+                this.paymentOrderId, this.bankId, this.date, this.accountId));
 
         } else {
 
@@ -537,7 +603,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                         - (studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
 
                 debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s debited from Account", 
+                debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s is debited from Account", 
                 this.studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
 
                 getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
@@ -551,7 +617,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                         - (studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount));
 
                 debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s debited from Account",
+                debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s is debited from Account",
                 this.studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
 
                 getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
@@ -618,14 +684,11 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Behavior<Command> onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
 
-        getContext().getLog().info("Payment Order is Completed, now It is Processed! \n");
+        getContext().getLog().info("Payment Order is going to be completed, now It is Processed! and will be Calculated1\n");
 
-        completeOrder.confirmation.tell(new PaymentOrderProcessed("\nTRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %.2f\n",
-        completeOrder.paymentOrderId, completeOrder.accountId, 
-        completeOrder.bankId, completeOrder.externalAccountId, 
-        completeOrder.date, completeOrder.amount, completeOrder.balance));
+        completeOrder.confirmation.tell(new PaymentOrderProcessed("Completed Payment with status: VERIFIED!"));
         
-        this.getContext().getSelf().tell(new CalculatePaymentOrderFee(completeOrder.accountId, completeOrder.amount,
+        this.getContext().getSelf().tell(new CalculatePaymentOrderFee(completeOrder.accountId, completeOrder.amount, this.currency,
         completeOrder.balance));
 
         return this;
@@ -634,11 +697,68 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onSubmitWithdrawalOrder(final SubmitWithdrawalOrder withdrawOrder) {
 
+        if (this.userPackage == "Student") {
+
+            if (this.amount < this.accountBalance) {
+
+                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
+
+                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
+                this.accountId, this.date, this.amount));
+
+            } else {
+
+                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
+
+            }
+
+        } else if (this.userPackage == "Normal") {
+
+            if (this.amount < this.accountBalance) {
+
+                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
+
+                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
+                this.accountId, this.date, this.amount));                
+
+            } else {
+
+                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
+
+            }
+
+        } else {
+
+            getContext().getLog().info("ERROR! Please, Enter relevant package name to do withdrawal!");
+
+        }
+
         return this;                        
 
     }
 
     private Behavior<Command> onSubmitDepositOrder(final SubmitDepositOrder depositOrder) {
+
+        if (this.userPackage == "Student") {
+
+            depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
+
+            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
+            this.accountId, this.date, this.amount));
+
+
+        } else if (this.userPackage == "Normal") {
+
+            depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
+
+            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
+            this.accountId, this.date, this.amount));
+
+        } else {
+
+            getContext().getLog().info("ERROR! Please, Enter relevant package name to do deposit!");
+
+        }
 
         return this;                        
 
