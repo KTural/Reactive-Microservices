@@ -16,15 +16,17 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
         final String accountId;
         final Double amount;
-        final Double balance;
+        final String currency;
+        protected Double balance;
         protected CompletePaymentOrder billingComplete;
         protected ActorRef<PaymentOrderFeeCalculated> replyTo;
   
-        public CalculatePaymentOrderFee(final String accountId, final Double amount, 
-                    final Double balance) {
+        public CalculatePaymentOrderFee(final String accountId, final Double amount, final String currency,
+                    Double balance) {
 
                         this.accountId = billingComplete.accountId;
                         this.amount = billingComplete.amount;
+                        this.currency = currency;
                         this.balance = billingComplete.balance;
 
         }
@@ -32,12 +34,12 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     public static final class PaymentOrderFeeCalculated {
 
-        final String feeType;
+        final String replyTo;
         protected CalculatePaymentOrderFee calculateFee;
 
-        public PaymentOrderFeeCalculated(final String feeType) {
+        public PaymentOrderFeeCalculated(final String replyTo, Double balance, String currency) {
 
-                        this.feeType = feeType;
+                        this.replyTo = replyTo;
 
         }
     }
@@ -95,13 +97,27 @@ public class Billing extends AbstractBehavior<Account.Command> {
     
     protected long numberOfFeeWithdrawals;
     protected long numberOfFeeDeposits;
+    protected long numberOfRequests;
+
+    protected double studentInterestRate;
+    protected double normalInterestRate;
+    protected double percentage;
 
 
     private Billing(final ActorContext<Command> context) {
 
         super(context);
+        
+        this.numberOfFeeWithdrawals = 1;
+        this.numberOfFeeDeposits = 1;
+        this.numberOfRequests = 1;
 
-        context.getLog().info("Billing actor is created with");
+        this.studentInterestRate = 1.5;
+        this.normalInterestRate = 0.5;
+
+        this.percentage = 100.00;
+
+        context.getLog().info("\nBilling actor is created with\n");
 
     }
 
@@ -120,11 +136,46 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onCalculatePaymentOrderFee(final CalculatePaymentOrderFee calculateFee) {
 
+        getContext().getLog().info("Payment Order is now calculated. Interest Rate will be calculated for each P.O requests!\n");
+
+        if (calculateFee.billingComplete.creditExternal.creditAccount.identify.instruct.userPackage == "Student") {
+
+            double debitedStudentAmount = ((calculateFee.amount * this.studentInterestRate) / this.percentage) * this.numberOfRequests;
+
+            calculateFee.balance = calculateFee.balance - debitedStudentAmount;
+
+            calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("%.2f %s is debited from Account due to Interest Rate for Student package!", 
+            debitedStudentAmount, calculateFee.currency));
+
+        } else if (calculateFee.billingComplete.creditExternal.creditAccount.identify.instruct.userPackage == "Normal") {
+
+            double debitedNormalAmount = ((calculateFee.amount * this.normalInterestRate) / this.percentage) * this.numberOfRequests;
+
+            calculateFee.balance = calculateFee.balance - debitedNormalAmount;
+
+            calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("%.2f %s is debited from Account due to Interest Rate for Normal package!", 
+            debitedNormalAmount, calculateFee.currency));            
+
+        } else {
+
+            getContext().getLog().info("\n\nERROR! Payment Order could not be calculated! Please Enter relevant order package!\n\n");
+
+        }
+
+        getContext().getLog().info("Current Balance : %.2f", calculateFee.balance);
+
+        getContext().getLog().info("\nTRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %.2f %s\n",
+        calculateFee.billingComplete.paymentOrderId, calculateFee.billingComplete.accountId, calculateFee.billingComplete.bankId,
+        calculateFee.billingComplete.externalAccountId, calculateFee.billingComplete.date, calculateFee.amount, 
+        calculateFee.balance, calculateFee.currency);
+
         return this;
 
     }
 
     private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
+
+
 
         return this;
 
@@ -132,12 +183,15 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
 
+        
+
         return this;
 
     }
 
     private Behavior<Command> onCalculateEndOfMonthBill(final CalculateEndOfMonthBill calculateMonthly) {
 
+        // to be done
         return this;
 
     }
