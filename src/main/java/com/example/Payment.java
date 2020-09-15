@@ -190,7 +190,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
                         this.getContext().getSelf().tell(new CompletePaymentOrder(creditExtAccount.paymentOrderId, 
                         creditExtAccount.creditAccount.bankId, creditExtAccount.externalAccountId, 
                         creditExtAccount.creditAccount.internalAccountId, creditExtAccount.amount,
-                        creditExtAccount.creditAccount.identify.instruct.check.paymentOrder.date, 
+                        creditExtAccount.creditAccount.identify.instruct.check.paymentOrder.dateTime,
                         creditExtAccount.creditAccount.identify.balance));
 
                         return this;
