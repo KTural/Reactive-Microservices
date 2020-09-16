@@ -15,6 +15,7 @@ public class BankManager {
 
     private static Long paymentOrderId;
     private static String bankId;
+    private static String currency;
 
     // For Payment domain
     private static boolean internalAccountInstructed;
@@ -24,6 +25,7 @@ public class BankManager {
     // For Billing domain
     private static String withdrawalId;
     private static String depositId;
+
     public static void main(String[] args) {
         // Given account id of user
         accountId = "ACCOUNT NUMBER: 0989821187";
@@ -45,23 +47,24 @@ public class BankManager {
         // Withdraw and Deposit Process Ids
         withdrawalId = "WITHDRAWAL ID: 89298420";
         depositId = "DEPOSIT ID: 04932409";
-
+        // Currency that all payments or transactions that will be calculated and processed
+        currency = "CZK";
         // Create Account actor and other actors according to type of command user enters 
         if (mainCommand == "Payment") {
 
-                ActorSystem.create(Account.create(accountId, accountBalance, amount, mainCommand, userPackage, paymentOrderId, bankId, 
+                ActorSystem.create(Account.create(accountId, accountBalance, amount, mainCommand, userPackage, paymentOrderId, bankId, currency,
                 withdrawalId, depositId),
                 "Account-actor");
-                ActorSystem.create(Payment.create(accountId, bankId, internalAccountInstructed, 
-                externalAccountCredited, paymentNetworkConnected), "Payment-actor");
-                ActorSystem.create(Billing.create(), "Billing-actor");
+                //ActorSystem.create(Payment.create(accountId, bankId, internalAccountInstructed, 
+                //externalAccountCredited, paymentNetworkConnected), "Payment-actor");
+                //ActorSystem.create(Billing.create(), "Billing-actor");
 
         } else if ((mainCommand == "Withdraw") || (mainCommand == "Deposit")) {
 
-                ActorSystem.create(Account.create(accountId, accountBalance, amount, mainCommand, userPackage, paymentOrderId, bankId, 
+                ActorSystem.create(Account.create(accountId, accountBalance, amount, mainCommand, userPackage, paymentOrderId, bankId, currency,
                 withdrawalId, depositId),
                 "Account-actor");
-                ActorSystem.create(Billing.create(), "Billing-actor");                
+                //ActorSystem.create(Billing.create(), "Billing-actor");                
 
         }
     }
