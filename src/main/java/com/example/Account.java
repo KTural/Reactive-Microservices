@@ -425,11 +425,11 @@ public class Account extends AbstractBehavior<Account.Command> {
     }
 
     public static Behavior<Command> create(String accountId, Double accountBalance, Double amount, 
-                                        String mainCommand, String userPackage, long paymentOrderId, String bankId,
+                                        String mainCommand, String userPackage, long paymentOrderId, String bankId, String currency,
                                         String withdrawalId, String depositId) {
 
         return Behaviors.setup(context -> new Account(context, accountId, accountBalance, amount, mainCommand, userPackage, 
-        paymentOrderId, bankId, withdrawalId, depositId));
+        paymentOrderId, bankId, currency, withdrawalId, depositId));
 
     }
 
@@ -442,11 +442,10 @@ public class Account extends AbstractBehavior<Account.Command> {
     private final String userPackage;
     private final long paymentOrderId;
     private final String bankId;
+    private final String currency;
 
     private final String withdrawalId;
     private final String depositId;
-
-    final String currency;
 
     protected long numberOfPaymentOrderRequests;
 
@@ -466,7 +465,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
             final Double amount, final String mainCommand, final String userPackage, final long paymentOrderId, final String bankId, 
-            final String withdrawalId, final String depositId) {
+            final String currency, final String withdrawalId, final String depositId) {
 
         super(context);
 
@@ -477,10 +476,9 @@ public class Account extends AbstractBehavior<Account.Command> {
         this.userPackage = userPackage;
         this.paymentOrderId = paymentOrderId;
         this.bankId = bankId;
+        this.currency = currency;
         this.withdrawalId = withdrawalId;
         this.depositId = depositId;
-
-        this.currency = "CZK";
 
         numberOfPaymentOrderRequests = 0;
 
@@ -496,8 +494,8 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         externalAccountInstruction = true;
 
-        context.getLog().info("\nAccount actor is created with :: Account Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f, User Package - %s\n", 
-        accountId, accountBalance, currency, mainCommand, amount, userPackage);
+        context.getLog().info("\nAccount actor is created with :: Account Id - %s, Bank Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f, User Package - %s\n", 
+        accountId, bankId, accountBalance, currency, mainCommand, amount, userPackage);
 
     }
 
@@ -774,7 +772,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         getContext().getLog().info("Account actor is stopped with :: Account id - %s, balance - %.2f, currency - %s\n",
         accountId, accountBalance, currency);
-        
+
         return Behaviors.stopped();
     }    
     
