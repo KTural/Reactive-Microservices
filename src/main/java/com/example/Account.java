@@ -368,10 +368,11 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String accountId;
         final Date date;
         final Double amount;
+        final String replyTo;
         protected DebitWithdrawnAccount debit;
 
         public WithdrawalCompleted(final String withdrawalId, final Double balance, final String userPackage, 
-                    final String accountId, final Date date, final Double amount) {
+                    final String accountId, final Date date, final Double amount, final String replyTo) {
 
                         this.withdrawalId = withdrawalId;
                         this.balance = balance;
@@ -379,6 +380,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                         this.accountId = accountId;
                         this.date = date;
                         this.amount = amount;
+                        this.replyTo = replyTo;
 
         }
     }
@@ -391,10 +393,11 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String accountId;
         final Date date;
         final Double amount;
+        final String replyTo;
         protected CreditDepositedAccount credit;
 
         public DepositCompleted(final String depositId, final Double balance, final String userPackage, 
-                    final String accountId, final Date date, final Double amount) {
+                    final String accountId, final Date date, final Double amount, final String replyTo) {
 
                         this.depositId = depositId;
                         this.balance = balance;
@@ -402,6 +405,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                         this.accountId = accountId;
                         this.date = date;
                         this.amount = amount;
+                        this.replyTo = replyTo;
 
         }
     }
@@ -602,6 +606,8 @@ public class Account extends AbstractBehavior<Account.Command> {
                 debitAccount.balance = (debitAccount.balance
                         - (studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
 
+                numberOfPaymentOrderRequests += incrementRequestOrOccurence;      
+
                 debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
                 debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s is debited from Account", 
                 this.studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
@@ -704,7 +710,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                 withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
 
                 this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
-                this.accountId, this.date, this.amount));
+                this.accountId, this.date, this.amount, this.currency));
 
             } else {
 
@@ -719,7 +725,7 @@ public class Account extends AbstractBehavior<Account.Command> {
                 withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
 
                 this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
-                this.accountId, this.date, this.amount));                
+                this.accountId, this.date, this.amount, this.currency));                
 
             } else {
 
@@ -729,7 +735,7 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         } else {
 
-            getContext().getLog().info("ERROR! Please, Enter relevant package name to do withdrawal!");
+            getContext().getLog().info("\nERROR! Please, Enter relevant package name to do withdrawal!\n");
 
         }
 
@@ -744,7 +750,7 @@ public class Account extends AbstractBehavior<Account.Command> {
             depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
 
             this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
-            this.accountId, this.date, this.amount));
+            this.accountId, this.date, this.amount, this.currency));
 
 
         } else if (this.userPackage == "Normal") {
@@ -752,11 +758,11 @@ public class Account extends AbstractBehavior<Account.Command> {
             depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
 
             this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
-            this.accountId, this.date, this.amount));
+            this.accountId, this.date, this.amount, this.currency));
 
         } else {
 
-            getContext().getLog().info("ERROR! Please, Enter relevant package name to do deposit!");
+            getContext().getLog().info("\nERROR! Please, Enter relevant package name to do deposit!\n");
 
         }
 
@@ -765,8 +771,10 @@ public class Account extends AbstractBehavior<Account.Command> {
     }    
     
     private Behavior<Command> onPostStop() {
+
         getContext().getLog().info("Account actor is stopped with :: Account id - %s, balance - %.2f, currency - %s\n",
         accountId, accountBalance, currency);
+        
         return Behaviors.stopped();
     }    
     
