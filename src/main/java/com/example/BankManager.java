@@ -1,5 +1,12 @@
 package com.example;
 
+import java.io.IOException;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import com.example.Account.*;
+
 // # reactive-account
 
 import akka.actor.typed.ActorSystem;
@@ -26,48 +33,122 @@ public class BankManager {
     private static String withdrawalId;
     private static String depositId;
 
+    // Write Logger
+    static Logger logger = Logger.getLogger(BankManager.class.getName());
+
+    // read from input
+    static Scanner scanner = new Scanner(System.in);
+
+    // main program
     public static void main(String[] args) {
+        logger.log(Level.INFO, "ENTER INTERNAL ACCOUNT ID : ");
         // Given account id of user
-        accountId = "ACCOUNT NUMBER: 0989821187";
-        accountBalance = 32768.029;
+        String id = scanner.nextLine();
+        accountId = "N: " + id;
+        // Balance of account
+        logger.log(Level.INFO, "ENTER ACCOUNT BALANCE : ");
+        Double balance = scanner.nextDouble();
+        accountBalance = balance;
         // Amount that user wants to send to another account (as payment order)
-        amount = 10000.905;
-        // One of the 3 commands : withdraw, deposit, payment in order to execute other actors and behaviors
+        logger.log(Level.INFO, "ENTER AMOUNT THAT YOU WANT TO PROCESS : ");
+        Double accAmount = scanner.nextDouble();
+        amount = accAmount;
+        // One of the 3 commands : withdraw, deposit, payment in order to execute other
+        // actors and behaviors
+        logger.log(Level.INFO, "ENTER ONE OF THESE COMMANDS - `Payment`, `Withdraw`, `Deposit` : ");
+        logger.log(Level.INFO, "\nDEFAULT ORDERED COMMAND IS PAYMENT! YOU CAN CHANGE IT MANUALLY IN BANKMANAGER!\n");
         mainCommand = "Payment";
-        // Package is one of `Normal` or `Student` has different product definition features
-        userPackage = "Student";
+        // Package is one of `Normal` or `Student` has different product definition
+        // features
+        logger.log(Level.INFO, "ENTER ONE OF THESE PACKAGES - `Student`, `Normal` - FOR FURTHER PROCESSING : ");
+        String pack = scanner.next();
+        userPackage = pack;
         // Payment order id for requesting sending amount to external account
         paymentOrderId = 892126099L;
         // The id of bank that external account is registered
-        bankId = "BANK ID: 1209309204930125CZ";
-        // Status of instruction for internal, external account and network connection in Payment domain
+        bankId = "N: 1209309204930125CZ";
+        // Status of instruction for internal, external account and network connection
+        // in Payment domain
         internalAccountInstructed = true;
         externalAccountCredited = true;
-        paymentNetworkConnected = false;
+        paymentNetworkConnected = true;
         // Withdraw and Deposit Process Ids
         withdrawalId = "WITHDRAWAL ID: 89298420";
         depositId = "DEPOSIT ID: 04932409";
-        // Currency that all payments or transactions that will be calculated and processed
-        currency = "CZK";
-        // Create Account actor and other actors according to type of command user enters 
+        // Currency that all payments or transactions that will be calculated and
+        // processed
+        logger.log(Level.INFO, "ENTER VALID CURRENCY : ");
+        String accountCurrency = scanner.next();
+        currency = accountCurrency;
+        // Create Account actor and other actors according to type of command user
+        // enters
         if (mainCommand == "Payment") {
 
-                ActorSystem.create(Account.create(accountId, accountBalance, amount, mainCommand, userPackage, paymentOrderId, bankId, currency,
-                withdrawalId, depositId),
-                "Account-actor");
-                //ActorSystem.create(Payment.create(accountId, bankId, internalAccountInstructed, 
-                //externalAccountCredited, paymentNetworkConnected), "Payment-actor");
-                //ActorSystem.create(Billing.create(), "Billing-actor");
+            final ActorSystem<Account.Command> account = ActorSystem.create(Account.create(accountId, accountBalance,
+                    amount, mainCommand, userPackage, paymentOrderId, bankId, currency, withdrawalId, depositId),
+                    "Account-actor");
+
+            final ActorSystem<Command> payment = ActorSystem.create(Payment.create(accountId, bankId,
+                    internalAccountInstructed, externalAccountCredited, paymentNetworkConnected), "Payment-actor");
+
+            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(), "Billing-actor");
+
+            try {
+                System.out.println(">>> PRESS ENTER TO EXIT ACCOUNT ACTOR <<<\n");
+                System.in.read();
+            } catch (IOException ignored) {
+            } finally {
+                account.terminate();
+            }
+
+            try {
+                System.out.println(">>> PRESS ENTER TO EXIT PAYMENT ACTOR <<<\n");
+                System.in.read();
+            } catch (IOException ignored) {
+            } finally {
+                payment.terminate();
+            }
+
+            try {
+                System.out.println(">>> PRESS ENTER TO EXIT BILLING ACTOR <<<\n");
+                System.in.read();
+            } catch (IOException ignored) {
+            } finally {
+                billing.terminate();
+            }
 
         } else if ((mainCommand == "Withdraw") || (mainCommand == "Deposit")) {
 
-                ActorSystem.create(Account.create(accountId, accountBalance, amount, mainCommand, userPackage, paymentOrderId, bankId, currency,
-                withdrawalId, depositId),
-                "Account-actor");
-                //ActorSystem.create(Billing.create(), "Billing-actor");                
+            final ActorSystem<Account.Command> account = ActorSystem.create(Account.create(accountId, accountBalance,
+            amount, mainCommand, userPackage, paymentOrderId, bankId, currency, 
+            withdrawalId, depositId),
+            "Account-actor");                
 
+            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(),
+            "Billing-actor");               
+
+            try {
+                System.out.println(">>> PRESS ENTER TO EXIT ACCOUNT ACTOR <<<\n");
+                System.in.read();
+            } catch (IOException ignored) {
+            } finally {
+                account.terminate();
+            } 
+                
+            try {
+                System.out.println(">>> PRESS ENTER TO EXIT BILLING ACTOR <<<\n");
+                System.in.read();
+                logger.log(Level.INFO, "ALL ACTORS FINISHED SUCCESSFULLY!");
+            } catch (IOException ignored) {
+            } finally {
+                billing.terminate();
+            } 
+            
         }
+
+       logger.log(Level.INFO, "ALL ACTORS PROCESSED SUCCESSFULLY!");
+
     }
+    
 
 }
-
