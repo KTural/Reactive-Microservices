@@ -53,17 +53,15 @@ public class Account extends AbstractBehavior<Account.Command> {
                         this.accountId = accountId;
                         this.bankId = bankId;
 
-                    }
+        }
     }
 
     public static final class PaymentOrderStatus {
         
-        final long paymentOrderId;
         final String status;
 
-        public PaymentOrderStatus(final long paymentOrderId, final String status) {
+        public PaymentOrderStatus(final String status) {
 
-                        this.paymentOrderId = paymentOrderId;
                         this.status = status;
 
         }
@@ -71,13 +69,14 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class CheckAccountBalance implements Command {
 
-        final SubmitPaymentOrder paymentOrder;
+        protected SubmitPaymentOrder paymentOrder;
+        final String replyTo;
         protected ActorRef<PaymentOrderVerified> verify;
         protected ActorRef<PaymentOrderRejected> reject;
 
-        public CheckAccountBalance(final SubmitPaymentOrder paymentOrder) {
+        public CheckAccountBalance(final String replyTo) {
 
-                        this.paymentOrder = paymentOrder;
+                        this.replyTo = replyTo;
 
         }
     }
@@ -433,6 +432,282 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     }
 
+    @Override
+    public Receive<Command> createReceive() {
+
+        return newReceiveBuilder().onMessage(CheckSubmissionCommand.class, this::onCheckSubmissionCommand)
+                .onMessage(SubmitPaymentOrder.class, this::onSubmitPaymentOrder)
+                .onMessage(CheckAccountBalance.class, this::onCheckAccountBalance)
+                .onMessage(DebitCurrentAccount.class, this::onDebitCurrentAccount)
+                .onMessage(InstructExternalAccount.class, this::onInstructExternalAccount)
+                .onMessage(CompletePaymentOrder.class, this::onCompletePaymentOrder)
+                .onMessage(SubmitWithdrawalOrder.class, this::onSubmitWithdrawalOrder)
+                .onMessage(SubmitDepositOrder.class, this::onSubmitDepositOrder)
+                .onMessage(Passivate.class, m -> Behaviors.stopped())
+                .onSignal(PostStop.class, signal -> onPostStop())
+                .build();
+
+    }
+
+    private Account onCheckSubmissionCommand(final CheckSubmissionCommand checkSubmission) {
+
+        getContext().getLog().info(
+                "SUBMISSION COMMANDS : `Payment`, `Withdraw`, `Deposit`\n"
+        );
+
+        if (this.mainCommand == "Payment") {
+
+                this.getContext().getSelf().tell(new SubmitPaymentOrder(this.paymentOrderId, this.date, 
+                this.amount, this.accountId, this.bankId));
+
+        } else if (this.mainCommand == "Withdraw") {
+
+                this.getContext().getSelf().tell(new SubmitWithdrawalOrder(this.accountBalance, this.amount, 
+                this.paymentOrderId, this.bankId, this.date, this.accountId));
+
+        } else if (this.mainCommand == "Deposit") {
+
+                this.getContext().getSelf().tell(new SubmitDepositOrder(this.accountBalance, this.amount,
+                this.paymentOrderId, this.bankId, this.date, this.accountId));
+
+        } else {
+
+                getContext().getLog().info("ERROR! ENTER RELEVANT SUBMISSION COMMAND!\n");
+
+        }
+
+        return this;
+
+    }
+
+    private Account onSubmitPaymentOrder(SubmitPaymentOrder paymentOrder) {
+        getContext().getLog().info(
+                "Submit Payment Order id = {} command received with Account id = {} and Bank id = {} on {} \n",
+                paymentOrder.paymentOrderId, paymentOrder.accountId, paymentOrder.bankId, paymentOrder.dateTime);
+
+        paymentOrder.checkPaymentOrderId.tell(new PaymentOrderStatus("SUBMITTED"));
+
+        this.getContext().getSelf().tell(new CheckAccountBalance("Instruct Checking Balance!\n"));
+        return this;
+    }
+
+    private Account onCheckAccountBalance(CheckAccountBalance checkBalance) {
+
+        getContext().getLog().info("Checking balance for Payment Order Id = {} \n",
+                checkBalance.paymentOrder.paymentOrderId);
+
+        if (checkBalance.paymentOrder.amount <= this.accountBalance) {
+
+            numberOfPaymentOrderRequests += incrementRequestOrOccurence;
+
+            checkBalance.verify.tell(new PaymentOrderVerified(checkBalance.paymentOrder.paymentOrderId,
+                    numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount,
+                    this.accountBalance, "VERIFIED"));
+
+            getContext().getLog().info("Balance for Payment Order Id = {}, status = {} \n",
+                    checkBalance.paymentOrder.paymentOrderId, "VERIFIED");
+
+            this.getContext().getSelf().tell(new DebitCurrentAccount(checkBalance.paymentOrder.paymentOrderId, 
+            this.accountBalance, this.userPackage));        
+                    
+        } else {
+
+            checkBalance.reject.tell(new PaymentOrderRejected(checkBalance.paymentOrder.paymentOrderId,
+                    checkBalance.paymentOrder.amount, this.accountBalance, "REJECTED"));
+
+            getContext().getLog().info("Balance for Payment Order Id = {}, status = {} \n",
+                    checkBalance.paymentOrder.paymentOrderId, "REJECTED");
+
+        }
+
+        return this;
+
+    }
+
+    private Account onDebitCurrentAccount(final DebitCurrentAccount debitAccount) {
+
+        getContext().getLog().info("Current Account Balance : {} {}. Offered packages below : `STUDENT` and `NORMAL` for Payment Order Id = {} \n",
+        debitAccount.balance, this.currency, debitAccount.check.paymentOrder.paymentOrderId);
+
+        if (debitAccount.userPackage == "Student") {
+
+            if (numberOfPaymentOrderRequests <= studentPackagePaymentOrderLimit) {
+
+                debitAccount.balance = (debitAccount.balance
+                        - (studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
+
+                numberOfPaymentOrderRequests += incrementRequestOrOccurence;      
+
+                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
+                debitAccount.balance, this.studentRequestsOrOccurences, String.format("{} {} is debited from Account", 
+                this.studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
+
+                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = {} : status = {} \n", 
+                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
+
+            } else {
+
+                studentRequestsOrOccurences = studentRequestsOrOccurences + incrementRequestOrOccurence;
+
+                debitAccount.balance = (debitAccount.balance 
+                        - (studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount));
+
+                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
+                debitAccount.balance, this.studentRequestsOrOccurences, String.format("{} {} is debited from Account",
+                this.studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
+
+                getContext().getLog().info("Debiting Current Account with {} package and Payment Order Id = {} : status = {} \n", 
+                this.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
+
+            }
+
+        } else if (debitAccount.userPackage == "Normal") {
+
+            if (numberOfPaymentOrderRequests <= normalPackagePaymentOrderLimit) {
+
+                debitAccount.balance = (debitAccount.balance
+                        - (normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
+
+                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
+                debitAccount.balance, this.normalRequestsOrOccurences, String.format("{} {} debited from Account", 
+                this.normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
+
+                getContext().getLog().info("Debiting Current Account with {} package and Payment Order Id = {} : status = {} \n", 
+                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
+
+            } else {
+
+                normalRequestsOrOccurences = normalRequestsOrOccurences + incrementRequestOrOccurence;
+
+                debitAccount.balance = (debitAccount.balance 
+                        - (normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount));
+
+                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
+                debitAccount.balance, this.normalRequestsOrOccurences, String.format("{} {} debited from Account",
+                this.normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
+
+                getContext().getLog().info("Debiting Current Account with {} package and Payment Order Id = {} : status = {} \n", 
+                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
+
+            }                
+
+        }
+
+        getContext().getLog().info("Account is Debited. Current Balance : {} {} \n", debitAccount.balance, this.currency);
+
+        this.getContext().getSelf().tell(new InstructExternalAccount(this.externalAccountInstruction,
+        debitAccount.balance, debitAccount.check.paymentOrder.amount));         
+
+        return this;
+
+    }
+    
+    private Account onInstructExternalAccount(final InstructExternalAccount instructAccount) {
+
+        getContext().getLog().info("Transfer Request amount : {} {}. Instructing External Account with Id : {}. \n", 
+        instructAccount.amount, this.currency, instructAccount.externalAccountId);
+
+        instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(instructAccount.amount, 
+        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "EXTERNAL ACCOUNT IS INSTRUCTED : SUCCESS"));
+
+        this.getContext().getSelf().tell(new IdentifyRouteToExternalAccount(instructAccount.instruct.check.paymentOrder.accountId,
+        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.externalAccountId, 
+        instructAccount.amount, instructAccount.instruct.check.paymentOrder.bankId));
+
+        return this;
+
+    }
+    
+    private Account onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
+
+        getContext().getLog().info("Payment Order is going to be completed, now It is Processed! and will be Calculated1\n");
+
+        completeOrder.confirmation.tell(new PaymentOrderProcessed("Completed Payment with status: VERIFIED!"));
+        
+        this.getContext().getSelf().tell(new CalculatePaymentOrderFee(completeOrder.accountId, completeOrder.amount, this.currency,
+        completeOrder.balance));
+
+        return this;
+
+    }
+
+    private Account onSubmitWithdrawalOrder(final SubmitWithdrawalOrder withdrawOrder) {
+
+        if (this.userPackage == "Student") {
+
+            if (this.amount < this.accountBalance) {
+
+                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
+
+                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
+                this.accountId, this.date, this.amount, this.currency));
+
+            } else {
+
+                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
+
+            }
+
+        } else if (this.userPackage == "Normal") {
+
+            if (this.amount < this.accountBalance) {
+
+                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
+
+                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
+                this.accountId, this.date, this.amount, this.currency));                
+
+            } else {
+
+                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
+
+            }
+
+        } else {
+
+            getContext().getLog().info("ERROR! Please, Enter relevant package name to do withdrawal!\n");
+
+        }
+
+        return this;                        
+
+    }
+
+    private Account onSubmitDepositOrder(final SubmitDepositOrder depositOrder) {
+
+        if (this.userPackage == "Student") {
+
+            depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
+
+            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
+            this.accountId, this.date, this.amount, this.currency));
+
+
+        } else if (this.userPackage == "Normal") {
+
+            depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
+
+            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
+            this.accountId, this.date, this.amount, this.currency));
+
+        } else {
+
+            getContext().getLog().info("ERROR! Please, Enter relevant package name to do deposit!\n");
+
+        }
+
+        return this;                        
+
+    }    
+    
+    private Behavior<Command> onPostStop() {
+
+        getContext().getLog().info("Account actor is stopped with :: Account id - {}, balance - {}, currency - {}\n",
+        accountId, accountBalance, currency);
+
+        return Behaviors.stopped();
+    }    
+
     private final String accountId;
     private final Double accountBalance;
     private final Double amount;
@@ -494,286 +769,10 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         externalAccountInstruction = true;
 
-        context.getLog().info("\nAccount actor is created with :: Account Id - %s, Bank Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f, User Package - %s\n", 
+        context.getLog().info("Account actor is created with :: Account Id - {}, Bank Id - {}, Balance - {}, Currency - {}, Process Name - {}, Requested amount - {}, User Package - {}\n", 
         accountId, bankId, accountBalance, currency, mainCommand, amount, userPackage);
 
-    }
-
-    @Override
-    public Receive<Command> createReceive() {
-
-        return newReceiveBuilder().onMessage(CheckSubmissionCommand.class, this::onCheckSubmissionCommand)
-                .onMessage(SubmitPaymentOrder.class, this::onSubmitPaymentOrder)
-                .onMessage(CheckAccountBalance.class, this::onCheckAccountBalance)
-                .onMessage(DebitCurrentAccount.class, this::onDebitCurrentAccount)
-                .onMessage(InstructExternalAccount.class, this::onInstructExternalAccount)
-                .onMessage(CompletePaymentOrder.class, this::onCompletePaymentOrder)
-                .onMessage(SubmitWithdrawalOrder.class, this::onSubmitWithdrawalOrder)
-                .onMessage(SubmitDepositOrder.class, this::onSubmitDepositOrder)
-                .onMessage(Passivate.class, m -> Behaviors.stopped())
-                .onSignal(PostStop.class, signal -> onPostStop())
-                .build();
-
-    }
-
-    private Behavior<Command> onCheckSubmissionCommand(final CheckSubmissionCommand checkSubmission) {
-
-        getContext().getLog().info(
-                "SUBMISSION COMMANDS : `Payment`, `Withdraw`, `Deposit`\n"
-        );
-
-        if (this.mainCommand == "Payment") {
-
-                this.getContext().getSelf().tell(new SubmitPaymentOrder(this.paymentOrderId, this.date, 
-                this.amount, this.accountId, this.bankId));
-
-        } else if (this.mainCommand == "Withdraw") {
-
-                this.getContext().getSelf().tell(new SubmitWithdrawalOrder(this.accountBalance, this.amount, 
-                this.paymentOrderId, this.bankId, this.date, this.accountId));
-
-        } else if (this.mainCommand == "Deposit") {
-
-                this.getContext().getSelf().tell(new SubmitDepositOrder(this.accountBalance, this.amount,
-                this.paymentOrderId, this.bankId, this.date, this.accountId));
-
-        } else {
-
-                getContext().getLog().info("ERROR! ENTER RELEVANT SUBMISSION COMMAND!\n");
-
-        }
-
-        return this;
-
-    }
-
-    private Behavior<Command> onSubmitPaymentOrder(final SubmitPaymentOrder paymentOrder) {
-        getContext().getLog().info(
-                "Submit Payment Order id = %d command received with Account id = %s and Bank id = %d on %s \n",
-                paymentOrder.paymentOrderId, paymentOrder.accountId, paymentOrder.bankId, paymentOrder.dateTime);
-
-        paymentOrder.checkPaymentOrderId.tell(new PaymentOrderStatus(paymentOrder.paymentOrderId, "SUBMITTED"));
-
-        this.getContext().getSelf().tell(new CheckAccountBalance(paymentOrder));
-
-        return this;
-    }
-
-    private Behavior<Command> onCheckAccountBalance(final CheckAccountBalance checkBalance) {
-
-        getContext().getLog().info("Checking balance for Payment Order Id = %d \n",
-                checkBalance.paymentOrder.paymentOrderId);
-
-        if (checkBalance.paymentOrder.amount <= this.accountBalance) {
-
-            numberOfPaymentOrderRequests += incrementRequestOrOccurence;
-
-            checkBalance.verify.tell(new PaymentOrderVerified(checkBalance.paymentOrder.paymentOrderId,
-                    numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount,
-                    this.accountBalance, "VERIFIED"));
-
-            getContext().getLog().info("Balance for Payment Order Id = %d, status = %s \n",
-                    checkBalance.paymentOrder.paymentOrderId, "VERIFIED");
-
-            this.getContext().getSelf().tell(new DebitCurrentAccount(checkBalance.paymentOrder.paymentOrderId, 
-            this.accountBalance, this.userPackage));        
-                    
-        } else {
-
-            checkBalance.reject.tell(new PaymentOrderRejected(checkBalance.paymentOrder.paymentOrderId,
-                    checkBalance.paymentOrder.amount, this.accountBalance, "REJECTED"));
-
-            getContext().getLog().info("Balance for Payment Order Id = %d, status = %s \n",
-                    checkBalance.paymentOrder.paymentOrderId, "REJECTED");
-
-        }
-
-        return this;
-
-    }
-
-    private Behavior<Command> onDebitCurrentAccount(final DebitCurrentAccount debitAccount) {
-
-        getContext().getLog().info("Current Account Balance : %.2f %s. Offered packages below : `STUDENT` and `NORMAL` for Payment Order Id = %d \n",
-        debitAccount.balance, this.currency, debitAccount.check.paymentOrder.paymentOrderId);
-
-        if (debitAccount.userPackage == "Student") {
-
-            if (numberOfPaymentOrderRequests <= studentPackagePaymentOrderLimit) {
-
-                debitAccount.balance = (debitAccount.balance
-                        - (studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
-
-                numberOfPaymentOrderRequests += incrementRequestOrOccurence;      
-
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s is debited from Account", 
-                this.studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
-
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
-                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
-
-            } else {
-
-                studentRequestsOrOccurences = studentRequestsOrOccurences + incrementRequestOrOccurence;
-
-                debitAccount.balance = (debitAccount.balance 
-                        - (studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount));
-
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.studentRequestsOrOccurences, String.format("%.2f %s is debited from Account",
-                this.studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
-
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
-                this.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
-
-            }
-
-        } else if (debitAccount.userPackage == "Normal") {
-
-            if (numberOfPaymentOrderRequests <= normalPackagePaymentOrderLimit) {
-
-                debitAccount.balance = (debitAccount.balance
-                        - (normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
-
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.normalRequestsOrOccurences, String.format("%.2f %s debited from Account", 
-                this.normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
-
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
-                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
-
-            } else {
-
-                normalRequestsOrOccurences = normalRequestsOrOccurences + incrementRequestOrOccurence;
-
-                debitAccount.balance = (debitAccount.balance 
-                        - (normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount));
-
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.normalRequestsOrOccurences, String.format("%.2f %s debited from Account",
-                this.normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
-
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = %d : status = %s \n", 
-                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
-
-            }                
-
-        }
-
-        getContext().getLog().info("Account is Debited. Current Balance : %.2f %s \n", debitAccount.balance, this.currency);
-
-        this.getContext().getSelf().tell(new InstructExternalAccount(this.externalAccountInstruction,
-        debitAccount.balance, debitAccount.check.paymentOrder.amount));         
-
-        return this;
-
-    }
-    
-    private Behavior<Command> onInstructExternalAccount(final InstructExternalAccount instructAccount) {
-
-        getContext().getLog().info("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s. \n", 
-        instructAccount.amount, this.currency, instructAccount.externalAccountId);
-
-        instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(instructAccount.amount, 
-        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "EXTERNAL ACCOUNT IS INSTRUCTED : SUCCESS"));
-
-        this.getContext().getSelf().tell(new IdentifyRouteToExternalAccount(instructAccount.instruct.check.paymentOrder.accountId,
-        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.externalAccountId, 
-        instructAccount.amount, instructAccount.instruct.check.paymentOrder.bankId));
-
-        return this;
-
-    }
-    
-    private Behavior<Command> onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
-
-        getContext().getLog().info("Payment Order is going to be completed, now It is Processed! and will be Calculated1\n");
-
-        completeOrder.confirmation.tell(new PaymentOrderProcessed("Completed Payment with status: VERIFIED!"));
-        
-        this.getContext().getSelf().tell(new CalculatePaymentOrderFee(completeOrder.accountId, completeOrder.amount, this.currency,
-        completeOrder.balance));
-
-        return this;
-
-    }
-
-    private Behavior<Command> onSubmitWithdrawalOrder(final SubmitWithdrawalOrder withdrawOrder) {
-
-        if (this.userPackage == "Student") {
-
-            if (this.amount < this.accountBalance) {
-
-                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
-
-                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
-                this.accountId, this.date, this.amount, this.currency));
-
-            } else {
-
-                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
-
-            }
-
-        } else if (this.userPackage == "Normal") {
-
-            if (this.amount < this.accountBalance) {
-
-                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
-
-                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
-                this.accountId, this.date, this.amount, this.currency));                
-
-            } else {
-
-                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
-
-            }
-
-        } else {
-
-            getContext().getLog().info("\nERROR! Please, Enter relevant package name to do withdrawal!\n");
-
-        }
-
-        return this;                        
-
-    }
-
-    private Behavior<Command> onSubmitDepositOrder(final SubmitDepositOrder depositOrder) {
-
-        if (this.userPackage == "Student") {
-
-            depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
-
-            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
-            this.accountId, this.date, this.amount, this.currency));
-
-
-        } else if (this.userPackage == "Normal") {
-
-            depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
-
-            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
-            this.accountId, this.date, this.amount, this.currency));
-
-        } else {
-
-            getContext().getLog().info("\nERROR! Please, Enter relevant package name to do deposit!\n");
-
-        }
-
-        return this;                        
-
-    }    
-    
-    private Behavior<Command> onPostStop() {
-
-        getContext().getLog().info("Account actor is stopped with :: Account id - %s, balance - %.2f, currency - %s\n",
-        accountId, accountBalance, currency);
-
-        return Behaviors.stopped();
     }    
     
 }
+
