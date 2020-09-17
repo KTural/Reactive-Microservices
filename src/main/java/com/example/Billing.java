@@ -148,7 +148,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
         this.percentage = 100.00;
 
-        context.getLog().info("\nBilling actor is created with\n");
+        context.getLog().info("Billing actor is created\n");
 
     }
 
@@ -177,7 +177,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
             calculateFee.balance = calculateFee.balance - debitedStudentAmount;
 
             calculateFee.replyTo.tell(new PaymentOrderFeeCalculated(
-                    "%.2f %s is debited from Account due to Interest Rate for Student package!", debitedStudentAmount,
+                    "{} {} is debited from Account due to Interest Rate for Student package!", debitedStudentAmount,
                     calculateFee.currency));
 
         } else if (calculateFee.billingComplete.creditExternal.creditAccount.identify.instruct.userPackage == "Normal") {
@@ -188,20 +188,20 @@ public class Billing extends AbstractBehavior<Account.Command> {
             calculateFee.balance = calculateFee.balance - debitedNormalAmount;
 
             calculateFee.replyTo.tell(new PaymentOrderFeeCalculated(
-                    "%.2f %s is debited from Account due to Interest Rate for Normal package!", debitedNormalAmount,
+                    "{} {} is debited from Account due to Interest Rate for Normal package!", debitedNormalAmount,
                     calculateFee.currency));
 
         } else {
 
             getContext().getLog()
-                    .info("\n\nERROR! Payment Order could not be calculated! Please Enter relevant order package!\n\n");
+                    .info("ERROR! Payment Order could not be calculated! Please Enter relevant order package!\n\n");
 
         }
 
-        getContext().getLog().info("\nCurrent Balance : %.2f\n", calculateFee.balance);
+        getContext().getLog().info("Current Balance : {}\n", calculateFee.balance);
 
         getContext().getLog().info(
-                "\nTRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %s | *AMOUNT* - %f | *BALANCE* - %.2f %s\n",
+                "TRANSACTION LOG: *PAYMENT ORDER ID* - {} | *CLIENT ACCOUNT ID* - {} | *BANK ID* - {} | *RECEIVER ACCOUNT ID*  - {} |  | *DATE* - {} | *AMOUNT* - {} | *BALANCE* - {} {}\n",
                 calculateFee.billingComplete.paymentOrderId, calculateFee.billingComplete.accountId,
                 calculateFee.billingComplete.bankId, calculateFee.billingComplete.externalAccountId,
                 calculateFee.billingComplete.date, calculateFee.amount, calculateFee.balance, calculateFee.currency);
@@ -212,7 +212,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
 
-        getContext().getLog().info("Current Account Balance : %.2f %s. Debitting Withdrawn Account\n",
+        getContext().getLog().info("Current Account Balance : {} {}. Debitting Withdrawn Account\n",
         debitAccount.balance, debitAccount.currency);
 
         if (debitAccount.userPackage == "Student") {
@@ -226,10 +226,10 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 debitAccount.replyTo.tell(new WithdrawalCompleted(debitAccount.withdrawalId, debitAccount.balance, debitAccount.userPackage,
                 debitAccount.accountId, debitAccount.date, debitAccount.amount, "VERIFIED!"));
 
-                getContext().getLog().info("\nAccount with Id - `%s` is debited with withdrawal Id - `%s` for package - `%s` with amount - `%.2f` on %s",
+                getContext().getLog().info("Account with Id - `{}` is debited with withdrawal Id - `{}` for package - `{}` with amount - `{}` on {}",
                 debitAccount.accountId, debitAccount.withdrawalId, debitAccount.userPackage, debitAccount.amount, debitAccount.date);
 
-                getContext().getLog().info("\n%.2f %s is withdrawn. Final Account Balance : %.2f. STATUS : %s", 
+                getContext().getLog().info("{} {} is withdrawn. Final Account Balance : {}. STATUS : {}", 
                 this.numberOfRequests + debitAccount.amount, debitAccount.currency, debitAccount.balance, "PROCESSED!");
 
             } else {
@@ -241,10 +241,10 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 debitAccount.replyTo.tell(new WithdrawalCompleted(debitAccount.withdrawalId, debitAccount.balance, debitAccount.userPackage,
                 debitAccount.accountId, debitAccount.date, debitAccount.amount, "VERIFIED!"));
 
-                getContext().getLog().info("\nAccount with Id - `%s` is debited with withdrawal Id - `%s` for package - `%s` with amount - `%.2f` on %s",
+                getContext().getLog().info("Account with Id - `{}` is debited with withdrawal Id - `{}` for package - `{}` with amount - `{}` on {}",
                 debitAccount.accountId, debitAccount.withdrawalId, debitAccount.userPackage, debitAccount.amount, debitAccount.date);
 
-                getContext().getLog().info("\n%.2f %s is withdrawn. Final Account Balance : %.2f. STATUS : %s", 
+                getContext().getLog().info("{} {} is withdrawn. Final Account Balance : {}. STATUS : {}", 
                 this.numberOfRequests * studentAtmFee + debitAccount.amount,debitAccount.currency,debitAccount.balance, "PROCESSED!");            
 
             }
@@ -256,15 +256,15 @@ public class Billing extends AbstractBehavior<Account.Command> {
             debitAccount.replyTo.tell(new WithdrawalCompleted(debitAccount.withdrawalId, debitAccount.balance, debitAccount.userPackage,
             debitAccount.accountId, debitAccount.date, debitAccount.amount, "VERIFIED!"));
 
-            getContext().getLog().info("\nAccount with Id - `%s` is debited with withdrawal Id - `%s` for package - `%s` with amount - `%.2f` on %s",
+            getContext().getLog().info("Account with Id - `{}` is debited with withdrawal Id - `{}` for package - `{}` with amount - `{}` on {}",
             debitAccount.accountId, debitAccount.withdrawalId, debitAccount.userPackage, debitAccount.amount, debitAccount.date);
 
-            getContext().getLog().info("\n%.2f %s is withdrawn. Final Account Balance : %.2f. STATUS : %s", 
+            getContext().getLog().info("{} {} is withdrawn. Final Account Balance : {}. STATUS : {}", 
             this.normalAtmFee + debitAccount.amount,debitAccount.currency,debitAccount.balance, "PROCESSED!");            
 
         } else {
 
-            getContext().getLog().info("\nERROR! Please, enter valid package name!\n");
+            getContext().getLog().info("ERROR! Please, enter valid package name!\n");
 
         }
 
@@ -274,7 +274,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
 
-        getContext().getLog().info("Current Account Balance : %.2f %s. Crediting Deposited Account\n",
+        getContext().getLog().info("Current Account Balance : {} {}. Crediting Deposited Account\n",
         creditAccount.balance, creditAccount.currency);
 
         if (creditAccount.userPackage == "Student") {
@@ -288,10 +288,10 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 creditAccount.replyTo.tell(new DepositCompleted(creditAccount.depositId, creditAccount.balance, creditAccount.userPackage,
                 creditAccount.accountId, creditAccount.date, creditAccount.amount, "VERIFIED!"));
 
-                getContext().getLog().info("\nAccount with Id - `%s` is credited with deposit Id - `%s` for package - `%s` with amount - `%.2f` on %s",
+                getContext().getLog().info("Account with Id - `{}` is credited with deposit Id - `{}` for package - `{}` with amount - `{}` on {}",
                 creditAccount.accountId, creditAccount.deposit, creditAccount.userPackage, creditAccount.amount, creditAccount.date);
 
-                getContext().getLog().info("\n%.2f %s is credited. Final Account Balance : %.2f. STATUS : %s", 
+                getContext().getLog().info("{} {} is credited. Final Account Balance : {}. STATUS : {}", 
                 (creditAccount.amount - numberOfRequests * studentAtmFee), creditAccount.currency, 
                 creditAccount.balance, "PROCESSED!");
 
@@ -304,10 +304,10 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 creditAccount.replyTo.tell(new DepositCompleted(creditAccount.depositId, creditAccount.balance, creditAccount.userPackage,
                 creditAccount.accountId, creditAccount.date, creditAccount.amount, "VERIFIED!"));
 
-                getContext().getLog().info("\nAccount with Id - `%s` is credited with deposit Id - `%s` for package - `%s` with amount - `%.2f` on %s",
+                getContext().getLog().info("Account with Id - `{}` is credited with deposit Id - `{}` for package - `{}` with amount - `{}` on {}",
                 creditAccount.accountId, creditAccount.deposit, creditAccount.userPackage, creditAccount.amount, creditAccount.date);
 
-                getContext().getLog().info("\n%.2f %s is credited. Final Account Balance : %.2f. STATUS : %s", 
+                getContext().getLog().info("{} {} is credited. Final Account Balance : {}. STATUS : {}", 
                 (creditAccount.amount - numberOfRequests * studentAtmFee), creditAccount.currency, 
                 creditAccount.balance, "PROCESSED!");         
 
@@ -320,16 +320,16 @@ public class Billing extends AbstractBehavior<Account.Command> {
             creditAccount.replyTo.tell(new DepositCompleted(creditAccount.depositId, creditAccount.balance, creditAccount.userPackage,
             creditAccount.accountId, creditAccount.date, creditAccount.amount, "VERIFIED!"));
 
-            getContext().getLog().info("\nAccount with Id - `%s` is credited with deposit Id - `%s` for package - `%s` with amount - `%.2f` on %s",
+            getContext().getLog().info("Account with Id - `{}` is credited with deposit Id - `{}` for package - `{}` with amount - `{}` on {}",
             creditAccount.accountId, creditAccount.deposit, creditAccount.userPackage, creditAccount.amount, creditAccount.date);
 
-            getContext().getLog().info("\n%.2f %s is credited. Final Account Balance : %.2f. STATUS : %s", 
+            getContext().getLog().info("{} {} is credited. Final Account Balance : {}. STATUS : {}", 
             (creditAccount.amount - numberOfRequests * studentAtmFee), creditAccount.currency, 
             creditAccount.balance, "PROCESSED!");           
 
         } else {
 
-            getContext().getLog().info("\nERROR! Please, enter valid package name!\n");
+            getContext().getLog().info("ERROR! Please, enter valid package name!\n");
 
         }        
 
@@ -346,7 +346,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onPostStop() {
 
-        getContext().getLog().info("Billing actor is stopped \n");
+        getContext().getLog().info("Billing actor is stopped\n");
         
         return Behaviors.stopped();
 
