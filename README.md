@@ -38,6 +38,23 @@ $ pip install -r requirements.txt
 # Try upgrading pip:
 $ pip install --upgrade pip
 ```
+### Running the source file
+
+Command:
+
+```sh
+# This will compile and run all main actors in source file
+$ mvn compile exec:exec
+```
+
+### Testing the source file
+
+Command:
+
+```sh
+# This will run all tests those are written for each actors in all domains
+$ mvn test
+```
 
 
 ### Project Visualization, Implementation, Architecture and Design details
