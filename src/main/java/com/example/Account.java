@@ -26,10 +26,24 @@ public class Account extends AbstractBehavior<Account.Command> {
         protected SubmitWithdrawalOrder withdrawOrder;
         protected SubmitDepositOrder depositOrder;
         final String replyTo;
+        final ActorRef<SubmissionCommandsChecked> checkedSubmit;
 
-        public CheckSubmissionCommand(final String replyTo) {
+        public CheckSubmissionCommand(final String replyTo, ActorRef<SubmissionCommandsChecked> checkedSubmit) {
 
             this.replyTo = replyTo;
+            this.checkedSubmit = checkedSubmit;
+
+        }
+
+    }
+
+    public static final class SubmissionCommandsChecked {
+
+        final String status;
+
+        public SubmissionCommandsChecked(final String status) {
+
+                        this.status = status;
 
         }
 
@@ -42,16 +56,20 @@ public class Account extends AbstractBehavior<Account.Command> {
         final Double amount;
         final String accountId;
         final String bankId;
-        protected ActorRef<PaymentOrderStatus> checkPaymentOrderId;
+        final String orderStatus;
+        final ActorRef<PaymentOrderStatus> checkPaymentOrderId;
 
         public SubmitPaymentOrder(final long paymentOrderId, final Date dateTime, final Double amount,
-                final String accountId, final String bankId) {
+                final String accountId, final String bankId, final String orderStatus,
+                final ActorRef<PaymentOrderStatus> checkPaymentOrderId) {
 
                         this.paymentOrderId = paymentOrderId;
                         this.dateTime = dateTime;
                         this.amount = amount;
                         this.accountId = accountId;
                         this.bankId = bankId;
+                        this.orderStatus = orderStatus;
+                        this.checkPaymentOrderId = checkPaymentOrderId;
 
         }
     }
@@ -455,26 +473,11 @@ public class Account extends AbstractBehavior<Account.Command> {
                 "SUBMISSION COMMANDS : `Payment`, `Withdraw`, `Deposit`\n"
         );
 
-        if (this.mainCommand == "Payment") {
+        System.out.println("\n\n\n  CHECKING SUBMISSION ... \n\n\n");
 
-                this.getContext().getSelf().tell(new SubmitPaymentOrder(this.paymentOrderId, this.date, 
-                this.amount, this.accountId, this.bankId));
+        checkSubmission.checkedSubmit.tell(new SubmissionCommandsChecked("CHECK SUBMISSION!"));
 
-        } else if (this.mainCommand == "Withdraw") {
-
-                this.getContext().getSelf().tell(new SubmitWithdrawalOrder(this.accountBalance, this.amount, 
-                this.paymentOrderId, this.bankId, this.date, this.accountId));
-
-        } else if (this.mainCommand == "Deposit") {
-
-                this.getContext().getSelf().tell(new SubmitDepositOrder(this.accountBalance, this.amount,
-                this.paymentOrderId, this.bankId, this.date, this.accountId));
-
-        } else {
-
-                getContext().getLog().info("ERROR! ENTER RELEVANT SUBMISSION COMMAND!\n");
-
-        }
+        getContext().getLog().info("*** {} Order *** Submission is selected!", this.mainCommand);
 
         return this;
 
@@ -483,11 +486,14 @@ public class Account extends AbstractBehavior<Account.Command> {
     private Account onSubmitPaymentOrder(SubmitPaymentOrder paymentOrder) {
         getContext().getLog().info(
                 "Submit Payment Order id = {} command received with Account id = {} and Bank id = {} on {} \n",
-                paymentOrder.paymentOrderId, paymentOrder.accountId, paymentOrder.bankId, paymentOrder.dateTime);
+                this.paymentOrderId, paymentOrder.accountId, this.bankId, paymentOrder.dateTime);
 
-        paymentOrder.checkPaymentOrderId.tell(new PaymentOrderStatus("SUBMITTED"));
+        paymentOrder.checkPaymentOrderId.tell(new PaymentOrderStatus("SUBMIT"));
 
-        this.getContext().getSelf().tell(new CheckAccountBalance("Instruct Checking Balance!\n"));
+        System.out.println("\n\n\n SUBMITTING PAYMENT ORDER ... \n\n\n");
+
+        getContext().getLog().info("Payment Order is SUBMITTED!");
+
         return this;
     }
 
