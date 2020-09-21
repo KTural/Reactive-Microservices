@@ -89,33 +89,26 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         protected SubmitPaymentOrder paymentOrder;
         final String replyTo;
-        protected ActorRef<PaymentOrderVerified> verify;
-        protected ActorRef<PaymentOrderRejected> reject;
+        final ActorRef<PaymentOrderVerified> verify;
+        final ActorRef<PaymentOrderRejected> reject;
 
-        public CheckAccountBalance(final String replyTo) {
+        public CheckAccountBalance(final String replyTo, final ActorRef<PaymentOrderVerified> verify,
+                final ActorRef<PaymentOrderRejected> reject) {
 
                         this.replyTo = replyTo;
+                        this.verify = verify;
+                        this.reject = reject;
+        
 
         }
     }
 
     public static final class PaymentOrderVerified {
         
-        final long paymentOrderId;
-        final long numberOfPaymentOrderRequests;
-        final Double amount;
-        final Double accountBalance;
         final String orderStatus;
         
-        public PaymentOrderVerified(final long paymentOrderId,
-                    final long numberOfPaymentOrderRequests, 
-                    final Double amount,
-                    final Double accountBalance, final String orderStatus) {
+        public PaymentOrderVerified(final String orderStatus) {
 
-                        this.paymentOrderId = paymentOrderId;
-                        this.numberOfPaymentOrderRequests = numberOfPaymentOrderRequests;
-                        this.amount = amount;
-                        this.accountBalance = accountBalance;
                         this.orderStatus = orderStatus;
 
                     }
@@ -123,17 +116,10 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class PaymentOrderRejected {
 
-        final long paymentOrderId;
-        final Double amount;
-        final Double balance;
         final String orderStatus;
 
-        public PaymentOrderRejected(final long paymentOrderId,
-                    final Double amount, final Double balance, final String orderStatus) {
+        public PaymentOrderRejected(final String orderStatus) {
 
-                        this.paymentOrderId = paymentOrderId;
-                        this.amount = amount;
-                        this.balance = balance;
                         this.orderStatus = orderStatus;
 
                     }        
@@ -500,31 +486,32 @@ public class Account extends AbstractBehavior<Account.Command> {
     private Account onCheckAccountBalance(CheckAccountBalance checkBalance) {
 
         getContext().getLog().info("Checking balance for Payment Order Id = {} \n",
-                checkBalance.paymentOrder.paymentOrderId);
+                this.paymentOrderId);
 
-        if (checkBalance.paymentOrder.amount <= this.accountBalance) {
+        if (this.amount <= this.accountBalance) {
 
             numberOfPaymentOrderRequests += incrementRequestOrOccurence;
 
-            checkBalance.verify.tell(new PaymentOrderVerified(checkBalance.paymentOrder.paymentOrderId,
-                    numberOfPaymentOrderRequests, checkBalance.paymentOrder.amount,
-                    this.accountBalance, "VERIFIED"));
+            checkBalance.verify.tell(new PaymentOrderVerified("VERIFIED!"));
 
-            getContext().getLog().info("Balance for Payment Order Id = {}, status = {} \n",
-                    checkBalance.paymentOrder.paymentOrderId, "VERIFIED");
+            System.out.println("\n\n\n CHECKING BALANCE ... \n\n\n");
 
-            this.getContext().getSelf().tell(new DebitCurrentAccount(checkBalance.paymentOrder.paymentOrderId, 
-            this.accountBalance, this.userPackage));        
+            getContext().getLog().info("Balance for Payment Order Id -> {}, status -> {} , number of Payment Order Requests -> {}\n",
+                    this.paymentOrderId, "VERIFIED!", numberOfPaymentOrderRequests);
+                  
                     
         } else {
 
-            checkBalance.reject.tell(new PaymentOrderRejected(checkBalance.paymentOrder.paymentOrderId,
-                    checkBalance.paymentOrder.amount, this.accountBalance, "REJECTED"));
+            checkBalance.reject.tell(new PaymentOrderRejected("REJECTED!"));
 
-            getContext().getLog().info("Balance for Payment Order Id = {}, status = {} \n",
-                    checkBalance.paymentOrder.paymentOrderId, "REJECTED");
+            System.out.println("\n\n\n CHECKING BALANCE ... \n\n\n");
 
-        }
+            getContext().getLog().info("Balance for Payment Order Id = {} is {} {}, status = {} \n",
+                    this.paymentOrderId, this.accountBalance, this.currency, "REJECTED!");
+
+            getContext().getLog().info("PAYMENT ORDER IS REJECTED! NOT ENOUGH BALANCE TO PROCESS DESIRED AMOUNT!!!\n");     
+
+        } 
 
         return this;
 
@@ -712,7 +699,7 @@ public class Account extends AbstractBehavior<Account.Command> {
         accountId, accountBalance, currency);
 
         return Behaviors.stopped();
-    }    
+    }  
 
     private final String accountId;
     private final Double accountBalance;
