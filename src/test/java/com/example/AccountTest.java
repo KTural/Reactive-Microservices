@@ -19,9 +19,20 @@ import com.example.Account.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class AccountTest {
 
-    ActorRef<Command> accountActor = testKit.spawn(Account.create("ACCOUNT ID: 230910/0609",
-    20980.90, 1500.50, "Payment", "Student", 506809102,
-    "BANK ID: 1209309204930125CZ", "CZK", "WITHDRAWAL ID: 89298420", "DEPOSIT ID: 04932409"));
+    private static String accountId = "ACCOUNT ID: 230910/0609";
+    private static Double accountBalance = 120950.49;
+    private static Double amount = 91500.50;
+    private static String mainCommand = "Payment";
+    private static String userPackage = "Student";
+    private static long paymentOrderId = 506809102;
+    private static String bankId = "BANK ID: 1209309204930125CZ";
+    private static String currency = "CZK";
+    private static String withdrawalId = "WITHDRAWAL ID: 89298420";
+    private static String depositId = "DEPOSIT ID: 04932409";
+
+    ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, 
+    accountBalance, amount, mainCommand, userPackage, paymentOrderId,
+    bankId, currency, withdrawalId, depositId));
 
     Date date = new Date(System.currentTimeMillis());
 
@@ -45,13 +56,39 @@ public class AccountTest {
     public void bTestSubmitPaymentOrder() {
 
         TestProbe<PaymentOrderStatus> probe = testKit.createTestProbe(PaymentOrderStatus.class); 
-        accountActor.tell(new SubmitPaymentOrder(506809102, date, 1500.50, "ACCOUNT ID: 230910/0609",
-        "BANK ID: 1209309204930125CZ", "SUBMIT", probe.getRef()));
+        accountActor.tell(new SubmitPaymentOrder(paymentOrderId, date, amount, accountId,
+        bankId, "SUBMIT", probe.getRef()));
         PaymentOrderStatus paymentStatus = probe.receiveMessage();
 
         assertEquals("SUBMIT", paymentStatus.status);
 
         assertNotEquals("FAIL", paymentStatus.status);
+
+    }
+
+    @Test
+    public void cTestCheckAccountBalance() {
+
+        TestProbe<PaymentOrderVerified> probe = testKit.createTestProbe(PaymentOrderVerified.class);
+        TestProbe<PaymentOrderRejected> probe_two = testKit.createTestProbe(PaymentOrderRejected.class);
+
+        if (amount < accountBalance) {
+
+        accountActor.tell(new CheckAccountBalance("VERIFIED!", probe.getRef(), probe_two.getRef()));
+
+        PaymentOrderVerified accountBalanceVerified = probe.receiveMessage();
+        
+        assertEquals("VERIFIED!", accountBalanceVerified.orderStatus);
+
+        } else {
+        
+        accountActor.tell(new CheckAccountBalance("REJECTED!", probe.getRef(), probe_two.getRef()));
+
+        PaymentOrderRejected accountBalanceRejected = probe_two.receiveMessage();
+
+        assertEquals("REJECTED!", accountBalanceRejected.orderStatus);
+
+        }
 
     }
     
