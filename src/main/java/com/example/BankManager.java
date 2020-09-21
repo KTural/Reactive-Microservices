@@ -14,6 +14,7 @@ import akka.actor.typed.ActorSystem;
 public class BankManager {
 
     private static String accountId;
+    private static String externalAccountId;
     private static Double accountBalance;
     private static Double amount;
 
@@ -45,6 +46,10 @@ public class BankManager {
         // Given account id of user
         String id = scanner.nextLine();
         accountId = "N: " + id;
+        // External Account id of user
+        logger.log(Level.INFO, "ENTER EXTERNAL ACCOUNT ID : ");
+        String id2 = scanner.nextLine();
+        externalAccountId = "N: " + id2;
         // Balance of account
         logger.log(Level.INFO, "ENTER ACCOUNT BALANCE : ");
         Double balance = scanner.nextDouble();
@@ -84,7 +89,7 @@ public class BankManager {
         // enters
         if (mainCommand == "Payment") {
 
-            final ActorSystem<Account.Command> account = ActorSystem.create(Account.create(accountId, accountBalance,
+            final ActorSystem<Account.Command> account = ActorSystem.create(Account.create(accountId, externalAccountId, accountBalance,
                     amount, mainCommand, userPackage, paymentOrderId, bankId, currency, withdrawalId, depositId),
                     "Account-actor");
 
@@ -119,7 +124,7 @@ public class BankManager {
 
         } else if ((mainCommand == "Withdraw") || (mainCommand == "Deposit")) {
 
-            final ActorSystem<Account.Command> account = ActorSystem.create(Account.create(accountId, accountBalance,
+            final ActorSystem<Account.Command> account = ActorSystem.create(Account.create(accountId, externalAccountId, accountBalance,
             amount, mainCommand, userPackage, paymentOrderId, bankId, currency, 
             withdrawalId, depositId),
             "Account-actor");                
