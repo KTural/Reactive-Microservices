@@ -1,7 +1,5 @@
 package com.example;
 
-import com.example.Payment.*;
-
 import java.util.Date;
 
 import com.example.Billing.*;
@@ -169,15 +167,21 @@ public class Account extends AbstractBehavior<Account.Command> {
         final boolean accountInstruction;
         final Double balance;
         final Double amount;
-        protected String externalAccountId;
-        protected ActorRef<ExternalAccountInstructed> instructExternalAccount;
+        final String externalAccountId;
+        final String replyTo;
+        final ActorRef<ExternalAccountInstructed> instructExternalAccount;
 
         public InstructExternalAccount(final boolean accountInstruction, final Double balance, 
-                    final Double amount) {
+                    final String externalAccountId,
+                    final Double amount, final String replyTo, 
+                    final ActorRef<ExternalAccountInstructed> instructExternalAccount) {
 
                         this.accountInstruction = accountInstruction;
-                        this.balance = instruct.balance;
-                        this.amount = instruct.check.paymentOrder.amount;
+                        this.balance = balance;
+                        this.externalAccountId = externalAccountId;
+                        this.amount = amount;
+                        this.replyTo = replyTo;
+                        this.instructExternalAccount = instructExternalAccount;
 
         }
     }
@@ -431,11 +435,11 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     }
 
-    public static Behavior<Command> create(String accountId, Double accountBalance, Double amount, 
+    public static Behavior<Command> create(String accountId, String externalAccountId, Double accountBalance, Double amount, 
                                         String mainCommand, String userPackage, long paymentOrderId, String bankId, String currency,
                                         String withdrawalId, String depositId) {
 
-        return Behaviors.setup(context -> new Account(context, accountId, accountBalance, amount, mainCommand, userPackage, 
+        return Behaviors.setup(context -> new Account(context, accountId, externalAccountId, accountBalance, amount, mainCommand, userPackage, 
         paymentOrderId, bankId, currency, withdrawalId, depositId));
 
     }
@@ -616,14 +620,14 @@ public class Account extends AbstractBehavior<Account.Command> {
     private Account onInstructExternalAccount(final InstructExternalAccount instructAccount) {
 
         getContext().getLog().info(String.format("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s. \n", 
-        instructAccount.amount, this.currency, instructAccount.externalAccountId));
+        this.amount, this.currency, this.externalAccountId));
 
-        instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(instructAccount.amount, 
-        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "EXTERNAL ACCOUNT IS INSTRUCTED : SUCCESS"));
+        instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(this.amount, 
+        this.paymentOrderId, this.accountBalance, "EXTERNAL ACCOUNT IS INSTRUCTED"));
 
-        this.getContext().getSelf().tell(new IdentifyRouteToExternalAccount(instructAccount.instruct.check.paymentOrder.accountId,
-        instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.externalAccountId, 
-        instructAccount.amount, instructAccount.instruct.check.paymentOrder.bankId));
+        System.out.println("\n\n\n INSTRUCTING EXTERNAL ACCOUNT ... \n\n\n");
+
+        getContext().getLog().info(" EXTERNAL ACCOUNT STATUS: INSTRUCTED! \n\n\n");
 
         return this;
 
@@ -720,6 +724,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     }  
 
     private final String accountId;
+    private final String externalAccountId;
     protected Double accountBalance;
     private final Double amount;
 
@@ -749,13 +754,14 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     Date date = new Date(System.currentTimeMillis());
 
-    private Account(final ActorContext<Command> context, final String accountId, final Double accountBalance,
+    private Account(final ActorContext<Command> context, final String accountId, final String externalAccountId, final Double accountBalance,
             final Double amount, final String mainCommand, final String userPackage, final long paymentOrderId, final String bankId, 
             final String currency, final String withdrawalId, final String depositId) {
 
         super(context);
 
         this.accountId = accountId;
+        this.externalAccountId = externalAccountId;
         this.accountBalance = accountBalance;
         this.amount = amount;
         this.mainCommand = mainCommand;
