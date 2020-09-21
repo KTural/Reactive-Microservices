@@ -131,13 +131,17 @@ public class Account extends AbstractBehavior<Account.Command> {
         protected CheckAccountBalance check;
         protected Double balance;
         final String userPackage;
-        protected ActorRef<AccountDebited> recordTransactionAmount;
+        final String replyTo;
+        final ActorRef<AccountDebited> recordTransactionAmount;
 
-        public DebitCurrentAccount(final long paymentOrderId, Double balance, final String userPackage) {
+        public DebitCurrentAccount(final long paymentOrderId, Double balance, final String userPackage,
+                    final String replyTo, final ActorRef<AccountDebited> recordTransactionAmount) {
 
                         this.paymentOrderId = paymentOrderId;
                         this.balance = balance;
                         this.userPackage = userPackage;
+                        this.replyTo = replyTo;
+                        this.recordTransactionAmount = recordTransactionAmount;
 
         }
     }
@@ -472,7 +476,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     private Account onSubmitPaymentOrder(SubmitPaymentOrder paymentOrder) {
         getContext().getLog().info(
                 "Submit Payment Order id = {} command received with Account id = {} and Bank id = {} on {} \n",
-                this.paymentOrderId, paymentOrder.accountId, this.bankId, paymentOrder.dateTime);
+                this.paymentOrderId, this.accountId, this.bankId, this.date);
 
         paymentOrder.checkPaymentOrderId.tell(new PaymentOrderStatus("SUBMIT"));
 
@@ -496,8 +500,9 @@ public class Account extends AbstractBehavior<Account.Command> {
 
             System.out.println("\n\n\n CHECKING BALANCE ... \n\n\n");
 
-            getContext().getLog().info("Balance for Payment Order Id -> {}, status -> {} , number of Payment Order Requests -> {}\n",
-                    this.paymentOrderId, "VERIFIED!", numberOfPaymentOrderRequests);
+            getContext().getLog().info(String.format("%.2f %s Balance for Payment Order Id -> %o, status -> %s , number of Payment Order Requests -> %o\n",
+                    this.accountBalance, this.currency,
+                    this.paymentOrderId, "VERIFIED!", numberOfPaymentOrderRequests));
                   
                     
         } else {
@@ -506,8 +511,8 @@ public class Account extends AbstractBehavior<Account.Command> {
 
             System.out.println("\n\n\n CHECKING BALANCE ... \n\n\n");
 
-            getContext().getLog().info("Balance for Payment Order Id = {} is {} {}, status = {} \n",
-                    this.paymentOrderId, this.accountBalance, this.currency, "REJECTED!");
+            getContext().getLog().info(String.format("Balance for Payment Order Id = %o is %.2f %s, status = %s \n",
+                    this.paymentOrderId, this.accountBalance, this.currency, "REJECTED!"));
 
             getContext().getLog().info("PAYMENT ORDER IS REJECTED! NOT ENOUGH BALANCE TO PROCESS DESIRED AMOUNT!!!\n");     
 
@@ -519,77 +524,90 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     private Account onDebitCurrentAccount(final DebitCurrentAccount debitAccount) {
 
-        getContext().getLog().info("Current Account Balance : {} {}. Offered packages below : `STUDENT` and `NORMAL` for Payment Order Id = {} \n",
-        debitAccount.balance, this.currency, debitAccount.check.paymentOrder.paymentOrderId);
+        getContext().getLog().info(String.format("Current Account Balance : %.2f %s. Offered packages below : `STUDENT` and `NORMAL` for Payment Order Id = %o \n",
+        this.accountBalance, this.currency, this.paymentOrderId));
 
-        if (debitAccount.userPackage == "Student") {
+        if (this.amount < this.accountBalance) {
 
-            if (numberOfPaymentOrderRequests <= studentPackagePaymentOrderLimit) {
+            if (this.userPackage == "Student") {
 
-                debitAccount.balance = (debitAccount.balance
-                        - (studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
+                if (numberOfPaymentOrderRequests <= studentPackagePaymentOrderLimit) {
 
-                numberOfPaymentOrderRequests += incrementRequestOrOccurence;      
+                    this.accountBalance = (this.accountBalance
+                            - (studentRequestsOrOccurences + this.amount));
 
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.studentRequestsOrOccurences, String.format("{} {} is debited from Account", 
-                this.studentRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
+                    numberOfPaymentOrderRequests += incrementRequestOrOccurence;      
 
-                getContext().getLog().info("Debiting Current Account with %s package and Payment Order Id = {} : status = {} \n", 
-                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
+                    debitAccount.recordTransactionAmount.tell(new AccountDebited(this.paymentOrderId,
+                    this.accountBalance, studentRequestsOrOccurences, "ACCOUNT IS DEBITED!"));
 
-            } else {
+                    System.out.println("\n\n\n DEBITING ACCOUNT ... \n\n\n");
 
-                studentRequestsOrOccurences = studentRequestsOrOccurences + incrementRequestOrOccurence;
+                    getContext().getLog().info(String.format("%.2f %s is Debited from Current Account with %s package and Payment Order Id = %o : status = %s \n", 
+                    this.studentRequestsOrOccurences + this.amount , this.currency, this.userPackage,
+                    this.paymentOrderId, "VERIFIED"));
 
-                debitAccount.balance = (debitAccount.balance 
-                        - (studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount));
+                } else {
 
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.studentRequestsOrOccurences, String.format("{} {} is debited from Account",
-                this.studentRequestsOrOccurences * studentPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
+                    studentRequestsOrOccurences = studentRequestsOrOccurences + incrementRequestOrOccurence;
 
-                getContext().getLog().info("Debiting Current Account with {} package and Payment Order Id = {} : status = {} \n", 
-                this.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
+                    this.accountBalance = (this.accountBalance 
+                            - (studentRequestsOrOccurences * studentPackagePaymentFee + this.amount));
+
+                    debitAccount.recordTransactionAmount.tell(new AccountDebited(this.paymentOrderId,
+                    this.accountBalance, studentRequestsOrOccurences, "ACCOUNT IS DEBITED!"));
+                    
+                    System.out.println("\n\n\n DEBITING ACCOUNT ... \n\n\n");
+
+                    getContext().getLog().info(String.format("%.2f %s is Debited from Current Account with %s package and Payment Order Id = %o : status = %s \n", 
+                    this.studentRequestsOrOccurences * studentPackagePaymentFee + this.amount, this.currency, this.userPackage, 
+                    this.paymentOrderId, "VERIFIED"));                
+
+                }
+
+            } else if (this.userPackage == "Normal") {
+
+                if (numberOfPaymentOrderRequests <= normalPackagePaymentOrderLimit) {
+
+                    this.accountBalance = (this.accountBalance
+                            - (normalRequestsOrOccurences + this.amount));
+
+                    debitAccount.recordTransactionAmount.tell(new AccountDebited(this.paymentOrderId,
+                    this.accountBalance, normalRequestsOrOccurences, "ACCOUNT IS DEBITED!"));
+
+                    System.out.println("\n\n\n DEBITING ACCOUNT ... \n\n\n");
+
+                    getContext().getLog().info(String.format("%.2f %s is Debited from Current Account with %s package and Payment Order Id = %o : status = %s \n", 
+                    normalRequestsOrOccurences + this.amount, this.currency, this.userPackage,
+                    this.paymentOrderId, "VERIFIED"));
+
+                } else {
+
+                    normalRequestsOrOccurences = normalRequestsOrOccurences + incrementRequestOrOccurence;
+
+                    this.accountBalance = (this.accountBalance 
+                            - (normalRequestsOrOccurences * normalPackagePaymentFee + this.amount));
+
+                    debitAccount.recordTransactionAmount.tell(new AccountDebited(this.paymentOrderId,
+                    this.accountBalance, normalRequestsOrOccurences, "ACCOUNT IS DEBITED!"));
+
+                    System.out.println("\n\n\n DEBITING ACCOUNT ... \n\n\n");
+
+                    getContext().getLog().info(String.format("%.2f %s is Debited from Current Account with %s package and Payment Order Id = %o : status = %s \n", 
+                    this.normalRequestsOrOccurences * normalPackagePaymentFee + this.amount, this.userPackage, this.userPackage,
+                    this.paymentOrderId, "VERIFIED"));                
+
+                }                
 
             }
 
-        } else if (debitAccount.userPackage == "Normal") {
+            getContext().getLog().info(String.format("Account is Debited. Current Balance : %.2f %s \n", this.accountBalance, this.currency));
 
-            if (numberOfPaymentOrderRequests <= normalPackagePaymentOrderLimit) {
+        } else {
 
-                debitAccount.balance = (debitAccount.balance
-                        - (normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount));
-
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.normalRequestsOrOccurences, String.format("{} {} debited from Account", 
-                this.normalRequestsOrOccurences + debitAccount.check.paymentOrder.amount, this.currency)));
-
-                getContext().getLog().info("Debiting Current Account with {} package and Payment Order Id = {} : status = {} \n", 
-                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");
-
-            } else {
-
-                normalRequestsOrOccurences = normalRequestsOrOccurences + incrementRequestOrOccurence;
-
-                debitAccount.balance = (debitAccount.balance 
-                        - (normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount));
-
-                debitAccount.recordTransactionAmount.tell(new AccountDebited(debitAccount.check.paymentOrder.paymentOrderId,
-                debitAccount.balance, this.normalRequestsOrOccurences, String.format("{} {} debited from Account",
-                this.normalRequestsOrOccurences * normalPackagePaymentFee + debitAccount.check.paymentOrder.amount, this.currency)));
-
-                getContext().getLog().info("Debiting Current Account with {} package and Payment Order Id = {} : status = {} \n", 
-                debitAccount.userPackage, debitAccount.check.paymentOrder.paymentOrderId, "VERIFIED");                
-
-            }                
+            getContext().getLog().info("Account failed to be debited! NOT ENOUGH BALANCE! \n");
 
         }
-
-        getContext().getLog().info("Account is Debited. Current Balance : {} {} \n", debitAccount.balance, this.currency);
-
-        this.getContext().getSelf().tell(new InstructExternalAccount(this.externalAccountInstruction,
-        debitAccount.balance, debitAccount.check.paymentOrder.amount));         
 
         return this;
 
@@ -597,8 +615,8 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Account onInstructExternalAccount(final InstructExternalAccount instructAccount) {
 
-        getContext().getLog().info("Transfer Request amount : {} {}. Instructing External Account with Id : {}. \n", 
-        instructAccount.amount, this.currency, instructAccount.externalAccountId);
+        getContext().getLog().info(String.format("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s. \n", 
+        instructAccount.amount, this.currency, instructAccount.externalAccountId));
 
         instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(instructAccount.amount, 
         instructAccount.instruct.check.paymentOrder.paymentOrderId, instructAccount.instruct.balance, "EXTERNAL ACCOUNT IS INSTRUCTED : SUCCESS"));
@@ -695,14 +713,14 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Behavior<Command> onPostStop() {
 
-        getContext().getLog().info("Account actor is stopped with :: Account id - {}, balance - {}, currency - {}\n",
-        accountId, accountBalance, currency);
+        getContext().getLog().info(String.format("Account actor is stopped with :: Account id - %s, balance - %.2f, currency - %s\n",
+        this.accountId, this.accountBalance, this.currency));
 
         return Behaviors.stopped();
     }  
 
     private final String accountId;
-    private final Double accountBalance;
+    protected Double accountBalance;
     private final Double amount;
 
     private final String mainCommand;
@@ -762,8 +780,8 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         externalAccountInstruction = true;
 
-        context.getLog().info("Account actor is created with :: Account Id - {}, Bank Id - {}, Balance - {}, Currency - {}, Process Name - {}, Requested amount - {}, User Package - {}\n", 
-        accountId, bankId, accountBalance, currency, mainCommand, amount, userPackage);
+        context.getLog().info(String.format("Account actor is created with :: Account Id - %s, Bank Id - %s, Balance - %.2f, Currency - %s, Process Name - %s, Requested amount - %.2f, User Package - %s\n", 
+        accountId, bankId, this.accountBalance, currency, mainCommand, amount, userPackage));
 
     }    
     
