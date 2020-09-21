@@ -20,6 +20,7 @@ import com.example.Account.*;
 public class AccountTest {
 
     private static String accountId = "ACCOUNT ID: 230910/0609";
+    private static String externalAcountId = "EXTERNAL ACCOUNT ID: 456690/3489";
     private static Double accountBalance = 120950.4990;
     private static Double amount = 91500.5090;
     private static String mainCommand = "Payment";
@@ -29,8 +30,9 @@ public class AccountTest {
     private static String currency = "CZK";
     private static String withdrawalId = "WITHDRAWAL ID: 89298420";
     private static String depositId = "DEPOSIT ID: 04932409";
+    private static boolean accountInstruction = true;
 
-    ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, 
+    ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, externalAcountId,
     accountBalance, amount, mainCommand, userPackage, paymentOrderId,
     bankId, currency, withdrawalId, depositId));
 
@@ -103,6 +105,20 @@ public class AccountTest {
         AccountDebited debitedAccount = probe.receiveMessage();
 
         assertEquals("ACCOUNT IS DEBITED!", debitedAccount.message);
+
+    }
+
+    @Test 
+    public void eTestInstructExternalAccount() {
+    
+        TestProbe<ExternalAccountInstructed> probe = testKit.createTestProbe(ExternalAccountInstructed.class);
+
+        accountActor.tell(new InstructExternalAccount(accountInstruction, accountBalance, externalAcountId,
+        amount, "EXTERNAL ACCOUNT IS INSTRUCTED", probe.getRef()));
+
+        ExternalAccountInstructed externalAcc = probe.receiveMessage();
+
+        assertEquals("EXTERNAL ACCOUNT IS INSTRUCTED", externalAcc.replyTo);
 
     }
     
