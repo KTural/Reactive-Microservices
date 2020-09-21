@@ -20,8 +20,8 @@ import com.example.Account.*;
 public class AccountTest {
 
     private static String accountId = "ACCOUNT ID: 230910/0609";
-    private static Double accountBalance = 120950.49;
-    private static Double amount = 91500.50;
+    private static Double accountBalance = 120950.4990;
+    private static Double amount = 91500.5090;
     private static String mainCommand = "Payment";
     private static String userPackage = "Student";
     private static long paymentOrderId = 506809102;
@@ -89,6 +89,20 @@ public class AccountTest {
         assertEquals("REJECTED!", accountBalanceRejected.orderStatus);
 
         }
+
+    }
+
+    @Test
+    public void dTestDebitCurrentAccount() {
+
+        TestProbe<AccountDebited> probe = testKit.createTestProbe(AccountDebited.class);
+
+        accountActor.tell(new DebitCurrentAccount(paymentOrderId, accountBalance, userPackage, "ACCOUNT IS DEBITED!",
+        probe.getRef()));
+
+        AccountDebited debitedAccount = probe.receiveMessage();
+
+        assertEquals("ACCOUNT IS DEBITED!", debitedAccount.message);
 
     }
     
