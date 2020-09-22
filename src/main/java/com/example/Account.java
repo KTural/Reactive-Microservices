@@ -620,7 +620,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     private Account onInstructExternalAccount(final InstructExternalAccount instructAccount) {
 
         getContext().getLog().info(String.format("Transfer Request amount : %.2f %s. Instructing External Account with Id : %s. \n", 
-        this.amount, this.currency, this.externalAccountId));
+        this.amount, this.currency, Account.externalAccountId));
 
         instructAccount.instructExternalAccount.tell(new ExternalAccountInstructed(this.amount, 
         this.paymentOrderId, this.accountBalance, "EXTERNAL ACCOUNT IS INSTRUCTED"));
@@ -724,7 +724,7 @@ public class Account extends AbstractBehavior<Account.Command> {
     }  
 
     private final String accountId;
-    private final String externalAccountId;
+    static String externalAccountId;
     protected Double accountBalance;
     private final Double amount;
 
@@ -754,14 +754,15 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     Date date = new Date(System.currentTimeMillis());
 
-    private Account(final ActorContext<Command> context, final String accountId, final String externalAccountId, final Double accountBalance,
-            final Double amount, final String mainCommand, final String userPackage, final long paymentOrderId, final String bankId, 
-            final String currency, final String withdrawalId, final String depositId) {
+    private Account(final ActorContext<Command> context, final String accountId, final String externalAccountId,
+            final Double accountBalance, final Double amount, final String mainCommand, final String userPackage,
+            final long paymentOrderId, final String bankId, final String currency, final String withdrawalId,
+            final String depositId) {
 
         super(context);
 
         this.accountId = accountId;
-        this.externalAccountId = externalAccountId;
+        Account.externalAccountId = externalAccountId;
         this.accountBalance = accountBalance;
         this.amount = amount;
         this.mainCommand = mainCommand;
