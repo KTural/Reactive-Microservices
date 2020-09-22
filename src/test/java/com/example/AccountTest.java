@@ -19,20 +19,20 @@ import com.example.Account.*;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class AccountTest {
 
-    private static String accountId = "ACCOUNT ID: 230910/0609";
-    private static String externalAcountId = "EXTERNAL ACCOUNT ID: 456690/3489";
+    static String accountId = "ACCOUNT ID: 230910/0609";
+    static String externalAcountId = "EXTERNAL ACCOUNT ID: 456690/3489";
     private static Double accountBalance = 120950.4990;
-    private static Double amount = 91500.5090;
+    static Double amount = 91500.5090;
     private static String mainCommand = "Payment";
     private static String userPackage = "Student";
-    private static long paymentOrderId = 506809102;
-    private static String bankId = "BANK ID: 1209309204930125CZ";
-    private static String currency = "CZK";
+    static long paymentOrderId = 506809102;
+    static String bankId = "BANK ID: 1209309204930125CZ";
+    static String currency = "CZK";
     private static String withdrawalId = "WITHDRAWAL ID: 89298420";
     private static String depositId = "DEPOSIT ID: 04932409";
     private static boolean accountInstruction = true;
 
-    ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, externalAcountId,
+    private ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, externalAcountId,
     accountBalance, amount, mainCommand, userPackage, paymentOrderId,
     bankId, currency, withdrawalId, depositId));
 
@@ -42,7 +42,7 @@ public class AccountTest {
     public static final TestKitJunitResource testKit = new TestKitJunitResource();
 
     @Test
-    public void  aTestCheckSubmissionCommand() {
+    public void aTestCheckSubmissionCommand() {
 
         TestProbe<SubmissionCommandsChecked> probe = testKit.createTestProbe(SubmissionCommandsChecked.class);
         accountActor.tell(new CheckSubmissionCommand("CHECK SUBMISSION!", probe.getRef()));
