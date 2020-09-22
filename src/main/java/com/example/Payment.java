@@ -20,17 +20,34 @@ public class Payment extends AbstractBehavior<Account.Command> {
         final Double amount;
         final String bankId;
         protected Account.InstructExternalAccount identify;
+        final String message;
+        final ActorRef<RouteIdentified> routeIdentify;
 
         public IdentifyRouteToExternalAccount(final String internalAccountId, final long paymentOrderId,
-                    final String externalAccountId, final Double amount, final String bankId) {
+                    final String externalAccountId, final Double amount, final String bankId,
+                    final String message, final ActorRef<RouteIdentified> routeIdentify) {
 
-                        this.internalAccountId = identify.instruct.check.paymentOrder.accountId;
-                        this.paymentOrderId = identify.instruct.check.paymentOrder.paymentOrderId;
-                        this.externalAccountId = identify.externalAccountId;
-                        this.amount = identify.amount;
-                        this.bankId = identify.instruct.check.paymentOrder.bankId;
+                        this.internalAccountId = internalAccountId;
+                        this.paymentOrderId = paymentOrderId;
+                        this.externalAccountId = externalAccountId;
+                        this.amount = amount;
+                        this.bankId = bankId;
+                        this.message = message;
+                        this.routeIdentify = routeIdentify;
 
-                    }
+        }
+    }
+
+    public static final class RouteIdentified {
+
+        final String replyTo;
+
+        public RouteIdentified(final String replyTo) {
+
+                        this.replyTo = replyTo;
+
+        }
+
     }
 
     public static final class InstructInternalAccount implements Account.Command {
@@ -108,7 +125,8 @@ public class Payment extends AbstractBehavior<Account.Command> {
                         boolean internalAccountInstructed, boolean externalAccountCredited,
                         boolean paymentNetworkConnected) {
 
-                            return Behaviors.setup(context -> new Payment(context, accountId, bankId, internalAccountInstructed,
+                            return Behaviors.setup(context -> new Payment(context, accountId, bankId,
+                            internalAccountInstructed,
                             externalAccountCredited, paymentNetworkConnected));
 
     }
@@ -157,13 +175,13 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onIdentifyRouteToExternalAccount(final IdentifyRouteToExternalAccount identifyRoute) {
 
-                        getContext().getLog().info(" External Account is within Bank's system with Id - {} \n", identifyRoute.externalAccountId);
+                        getContext().getLog().info(" External Account is within Bank's system with Id - {} \n", Account.externalAccountId);
                         
-                        this.getContext().getSelf().tell(new InstructInternalAccount(identifyRoute.amount, identifyRoute.paymentOrderId, 
-                        identifyRoute.internalAccountId));
+                        identifyRoute.routeIdentify.tell(new RouteIdentified("EXTERNAL ACCOUNT IS IN THE SYSTEM!"));
 
-                        this.getContext().getSelf().tell(new CreditExternalAccount(this.paymentNetworkRequest,
-                        identifyRoute.amount, identifyRoute.paymentOrderId, identifyRoute.internalAccountId, identifyRoute.externalAccountId));                        
+                        System.out.println("\n\n\n IDENTIFYING ROUTE TO EXTERNAL ACCOUNT ... \n\n\n");
+
+                        getContext().getLog().info("EXTERNAL ACCOUNT IS IN THE SYSTEM! \n");
 
                         return this;
 
@@ -201,7 +219,7 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     private Behavior<Account.Command> onPostStop() {
 
-                        getContext().getLog().info(" Payment actor is stopped with :: Account Id - {}, Bank Id - {} \n", accountId, bankId);
+                        getContext().getLog().info(String.format(" Payment actor is stopped with :: Account Id - %s, Bank Id - %s\n", accountId, bankId));
 
                         getContext().getLog().info(" Payment Network is disconnected - STATUS: {} \n", paymentNetworkConnected);
 
