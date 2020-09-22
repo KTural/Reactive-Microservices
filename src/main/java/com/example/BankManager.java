@@ -24,11 +24,11 @@ public class BankManager {
     private static Long paymentOrderId;
     private static String bankId;
     private static String currency;
-
+    
     // For Payment domain
     private static boolean internalAccountInstructed;
     private static boolean externalAccountCredited;
-    private static boolean paymentNetworkConnected;
+    private static boolean paymentNetworkConnected;    
 
     // For Billing domain
     private static String withdrawalId;
