@@ -56,13 +56,17 @@ public class Payment extends AbstractBehavior<Account.Command> {
         final long paymentOrderId;
         final String internalAccountId;
         protected IdentifyRouteToExternalAccount instructAccount;
-        protected ActorRef<Account.InternalAccountInstructed> instructInternalAccount;
+        final String message;
+        final ActorRef<Account.InternalAccountInstructed> instructInternalAccount;
 
-        public InstructInternalAccount(final Double amount, final long paymentOrderId, final String internalAccountId) {
+        public InstructInternalAccount(final Double amount, final long paymentOrderId, final String internalAccountId,
+                        final String message, final ActorRef<Account.InternalAccountInstructed> instructInternalAccount) {
 
-                        this.amount = instructAccount.amount;
-                        this.paymentOrderId = instructAccount.paymentOrderId;
-                        this.internalAccountId = instructAccount.internalAccountId;
+                        this.amount = amount;
+                        this.paymentOrderId = paymentOrderId;
+                        this.internalAccountId = internalAccountId;
+                        this.message = message;
+                        this.instructInternalAccount = instructInternalAccount;
 
         }
 
@@ -121,31 +125,35 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
     }
 
-    public static Behavior<Account.Command> create(String accountId, String bankId,
+    public static Behavior<Account.Command> create(String accountId, String bankId, Double amount, long paymentOrderId,
                         boolean internalAccountInstructed, boolean externalAccountCredited,
                         boolean paymentNetworkConnected) {
 
-                            return Behaviors.setup(context -> new Payment(context, accountId, bankId,
-                            internalAccountInstructed,
+                            return Behaviors.setup(context -> new Payment(context, accountId, bankId, amount,
+                            paymentOrderId, internalAccountInstructed,
                             externalAccountCredited, paymentNetworkConnected));
 
     }
 
     private final String accountId;
     private final String bankId;
+    private final Double amount;
+    private final long paymentOrderId;
     private final boolean internalAccountInstructed;
     private final boolean externalAccountCredited;
     private final boolean paymentNetworkConnected;
     protected boolean paymentNetworkRequest;
 
 
-    private Payment(final ActorContext<Account.Command> context, final String accountId, final String bankId, 
-                        final boolean internalAccountInstructed, final boolean externalAccountCredited,
+    private Payment(final ActorContext<Account.Command> context, final String accountId, final String bankId, final Double amount,
+                        final long paymentOrderId, final boolean internalAccountInstructed, final boolean externalAccountCredited,
                         final boolean paymentNetworkConnected) {
 
                             super(context);
                             this.accountId = accountId;
                             this.bankId = bankId;
+                            this.amount = amount;
+                            this.paymentOrderId = paymentOrderId;
                             this.internalAccountInstructed = internalAccountInstructed;
                             this.externalAccountCredited = externalAccountCredited;
                             this.paymentNetworkConnected = paymentNetworkConnected;
@@ -191,9 +199,11 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
                         getContext().getLog().info(" Internal Account Instruction is SUCCESSFULL! - STATUS: {} \n", internalAccountInstructed);
 
-                        instructIntAccount.instructInternalAccount.tell(new InternalAccountInstructed(instructIntAccount.amount,
-                        instructIntAccount.internalAccountId, instructIntAccount.instructAccount.externalAccountId,
-                        instructIntAccount.instructAccount.bankId, instructIntAccount.paymentOrderId, "VERIFIED!"));
+                        instructIntAccount.instructInternalAccount.tell(new InternalAccountInstructed(this.amount,
+                        this.accountId, Account.externalAccountId,
+                        this.bankId, this.paymentOrderId, "INTERNAL ACCOUNT IS INSTRUCTED!"));
+
+                        System.out.println("\n\n\n INSTRUCTING INTERNAL ACCOUNT ... \n\n\n");
 
                         return this;
 
