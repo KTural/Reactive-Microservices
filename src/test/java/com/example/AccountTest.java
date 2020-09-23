@@ -21,7 +21,7 @@ public class AccountTest {
 
     static String accountId = "ACCOUNT ID: 230910/0609";
     static String externalAcountId = "EXTERNAL ACCOUNT ID: 456690/3489";
-    private static Double accountBalance = 120950.4990;
+    static Double accountBalance = 120950.4990;
     static Double amount = 91500.5090;
     private static String mainCommand = "Payment";
     private static String userPackage = "Student";
@@ -32,14 +32,14 @@ public class AccountTest {
     private static String depositId = "DEPOSIT ID: 04932409";
     private static boolean accountInstruction = true;
 
-    private ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, externalAcountId,
-    accountBalance, amount, mainCommand, userPackage, paymentOrderId,
-    bankId, currency, withdrawalId, depositId));
-
-    Date date = new Date(System.currentTimeMillis());
+    static Date date = new Date(System.currentTimeMillis());
 
     @ClassRule
     public static final TestKitJunitResource testKit = new TestKitJunitResource();
+
+    static ActorRef<Command> accountActor = testKit.spawn(Account.create(accountId, externalAcountId,
+    accountBalance, amount, mainCommand, userPackage, paymentOrderId,
+    bankId, currency, withdrawalId, depositId));    
 
     @Test
     public void aTestCheckSubmissionCommand() {
@@ -121,6 +121,20 @@ public class AccountTest {
         assertEquals("EXTERNAL ACCOUNT IS INSTRUCTED", externalAcc.replyTo);
 
     }
-    
+
+    @Test
+    public void iTestCompletePaymentOrder() {
+
+        TestProbe<PaymentOrderProcessed> probe = testKit.createTestProbe(PaymentOrderProcessed.class);
+
+        accountActor.tell(new Account.CompletePaymentOrder(paymentOrderId, bankId, externalAcountId, accountId, 
+        amount, date, accountBalance,
+        "VERIFIED COMPLETION!", probe.getRef()));
+
+        PaymentOrderProcessed process = probe.receiveMessage();
+
+        assertEquals("VERIFIED COMPLETION!", process.replyTo);        
+
+    }    
 
 }
