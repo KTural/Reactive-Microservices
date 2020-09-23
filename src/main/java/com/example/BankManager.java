@@ -93,7 +93,7 @@ public class BankManager {
                     amount, mainCommand, userPackage, paymentOrderId, bankId, currency, withdrawalId, depositId),
                     "Account-actor");
 
-            final ActorSystem<Command> payment = ActorSystem.create(Payment.create(accountId, bankId,
+            final ActorSystem<Command> payment = ActorSystem.create(Payment.create(accountId, bankId, amount, paymentOrderId,
                     internalAccountInstructed, externalAccountCredited, paymentNetworkConnected), "Payment-actor");
 
             final ActorSystem<Command> billing = ActorSystem.create(Billing.create(), "Billing-actor");
