@@ -20,6 +20,7 @@ public class PaymentTest {
    // For Payment domain
    private final boolean internalAccountInstructed = true;
    private final boolean externalAccountCredited = true;
+   private final boolean paymentNetworkRequest = true;
    private final boolean paymentNetworkConnected = true;    
 
    private ActorRef<Command> paymentActor = testKit.spawn(Payment.create(AccountTest.accountId, AccountTest.bankId,
@@ -54,6 +55,22 @@ public class PaymentTest {
         InternalAccountInstructed internal = probe.receiveMessage();
 
         assertEquals("INTERNAL ACCOUNT IS INSTRUCTED!", internal.replyTo);        
+
+    }
+
+    @Test
+    public void hTestCreditExternalAccount() {
+
+        TestProbe<ExternalAccountCredited> probe = testKit.createTestProbe(ExternalAccountCredited.class);
+
+        paymentActor.tell(new CreditExternalAccount(paymentNetworkRequest, AccountTest.amount, AccountTest.paymentOrderId, AccountTest.accountId,
+        AccountTest.externalAcountId, "EXTERNAL ACCOUNT IS CREDITED!", probe.getRef()));
+
+        ExternalAccountCredited external = probe.receiveMessage();
+
+        assertEquals("EXTERNAL ACCOUNT IS CREDITED!", external.replyTo); 
+        
+        assertEquals(AccountTest.externalAcountId, external.externalAccountId);
 
     }
 }
