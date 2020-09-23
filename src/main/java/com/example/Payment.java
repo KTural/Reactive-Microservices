@@ -79,17 +79,21 @@ public class Payment extends AbstractBehavior<Account.Command> {
         final long paymentOrderId;
         final String internalAccountId;
         final String externalAccountId;
+        final String message;
         protected IdentifyRouteToExternalAccount creditAccount;
-        protected ActorRef<ExternalAccountCredited> creditExternalAccount;
+        final ActorRef<ExternalAccountCredited> creditExternalAccount;
 
         public CreditExternalAccount(final boolean paymentNetworkRequest, final Double amount, final long paymentOrderId, 
-                        final String internalAccountId, final String externalAccountId) {
+                        final String internalAccountId, final String externalAccountId, final String message,
+                        final ActorRef<ExternalAccountCredited> creditExternalAccount) {
 
                             this.paymentNetworkRequest = paymentNetworkRequest;
-                            this.amount = creditAccount.amount;
-                            this.paymentOrderId = creditAccount.paymentOrderId;
-                            this.internalAccountId = creditAccount.internalAccountId;
-                            this.externalAccountId = creditAccount.externalAccountId;
+                            this.amount = amount;
+                            this.paymentOrderId = paymentOrderId;
+                            this.internalAccountId = internalAccountId;
+                            this.externalAccountId = externalAccountId;
+                            this.message = message;
+                            this.creditExternalAccount = creditExternalAccount;
 
         }
         
@@ -213,15 +217,11 @@ public class Payment extends AbstractBehavior<Account.Command> {
 
                         getContext().getLog().info(" External Account is Credited SUCCESSFULLY! - STATUS: {} \n", externalAccountCredited);
 
-                        creditExtAccount.creditExternalAccount.tell(new ExternalAccountCredited(creditExtAccount.amount,
-                        creditExtAccount.internalAccountId, creditExtAccount.creditAccount.externalAccountId, 
-                        creditExtAccount.creditAccount.bankId, creditExtAccount.paymentOrderId, "VERIFIED!"));
+                        creditExtAccount.creditExternalAccount.tell(new ExternalAccountCredited(this.amount,
+                        this.accountId, Account.externalAccountId, 
+                        this.bankId, this.paymentOrderId, "EXTERNAL ACCOUNT IS CREDITED!"));
 
-                        this.getContext().getSelf().tell(new CompletePaymentOrder(creditExtAccount.paymentOrderId, 
-                        creditExtAccount.creditAccount.bankId, creditExtAccount.externalAccountId, 
-                        creditExtAccount.creditAccount.internalAccountId, creditExtAccount.amount,
-                        creditExtAccount.creditAccount.identify.instruct.check.paymentOrder.dateTime,
-                        creditExtAccount.creditAccount.identify.balance));
+                        System.out.println("\n\n\n CREDITING EXTERNAL ACCOUNT ... \n\n\n");
 
                         return this;
 
