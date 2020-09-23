@@ -23,7 +23,7 @@ public class PaymentTest {
    private final boolean paymentNetworkConnected = true;    
 
    private ActorRef<Command> paymentActor = testKit.spawn(Payment.create(AccountTest.accountId, AccountTest.bankId,
-   internalAccountInstructed, externalAccountCredited, paymentNetworkConnected));
+   AccountTest.amount, AccountTest.paymentOrderId, internalAccountInstructed, externalAccountCredited, paymentNetworkConnected));
 
     @ClassRule
     public static final TestKitJunitResource testKit = new TestKitJunitResource();
@@ -43,4 +43,17 @@ public class PaymentTest {
 
     }
 
+    @Test
+    public void gTestInstructInternalAccount() {
+
+        TestProbe<InternalAccountInstructed> probe = testKit.createTestProbe(InternalAccountInstructed.class);
+
+        paymentActor.tell(new InstructInternalAccount(AccountTest.amount, AccountTest.paymentOrderId, AccountTest.accountId,
+        "INTERNAL ACCOUNT IS INSTRUCTED!", probe.getRef()));
+
+        InternalAccountInstructed internal = probe.receiveMessage();
+
+        assertEquals("INTERNAL ACCOUNT IS INSTRUCTED!", internal.replyTo);        
+
+    }
 }
