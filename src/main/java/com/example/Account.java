@@ -238,19 +238,23 @@ public class Account extends AbstractBehavior<Account.Command> {
         final Double amount;
         final Date date;
         final Double balance;
+        final String message;
         protected Payment.CreditExternalAccount creditExternal;
-        protected ActorRef<PaymentOrderProcessed> confirmation;
+        final ActorRef<PaymentOrderProcessed> confirmation;
 
         public CompletePaymentOrder(final long paymentOrderId, final String bankId, final String externalAccountId,
-                    final String accountId, final Double amount, final Date date, final Double balance) {
+                    final String accountId, final Double amount, final Date date, final Double balance,
+                    final String message, final ActorRef<PaymentOrderProcessed> confirmation) {
 
-                        this.paymentOrderId = creditExternal.paymentOrderId;
-                        this.bankId = creditExternal.creditAccount.bankId;
-                        this.externalAccountId = creditExternal.externalAccountId;
-                        this.accountId = creditExternal.creditAccount.internalAccountId;
-                        this.amount = creditExternal.amount;
-                        this.date = creditExternal.creditAccount.identify.instruct.check.paymentOrder.dateTime;
-                        this.balance = creditExternal.creditAccount.identify.balance;
+                        this.paymentOrderId = paymentOrderId;
+                        this.bankId = bankId;
+                        this.externalAccountId = externalAccountId;
+                        this.accountId = accountId;
+                        this.amount = amount;
+                        this.date = date;
+                        this.balance = balance;
+                        this.message = message;
+                        this.confirmation = confirmation;
 
         }
     }
@@ -635,12 +639,11 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Account onCompletePaymentOrder(final CompletePaymentOrder completeOrder) {
 
-        getContext().getLog().info("Payment Order is going to be completed, now It is Processed! and will be Calculated1\n");
+        getContext().getLog().info("Payment Order is going to be completed, now It is Processed! and will be Calculated\n");
 
-        completeOrder.confirmation.tell(new PaymentOrderProcessed("Completed Payment with status: VERIFIED!"));
+        completeOrder.confirmation.tell(new PaymentOrderProcessed("VERIFIED COMPLETION!"));
         
-        this.getContext().getSelf().tell(new CalculatePaymentOrderFee(completeOrder.accountId, completeOrder.amount, this.currency,
-        completeOrder.balance));
+        System.out.println("\n\n\n PROCESSING PAYMENT ORDER ... \n\n\n");
 
         return this;
 
