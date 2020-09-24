@@ -702,18 +702,21 @@ public class Account extends AbstractBehavior<Account.Command> {
 
         if (this.userPackage == "Student") {
 
+            getContext().getLog().info("Submit Deposit Order id = {} command with package `{}` received with Account id = {}, Bank id = {} and Balance = {} {} on {} ",
+            this.depositId, this.userPackage, this.accountId, this.bankId, this.accountBalance, this.currency, this.date);
+
             depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
 
-            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
-            this.accountId, this.date, this.amount, this.currency));
-
+            System.out.println("\n\n\n SUBMITTING DEPOSIT ORDER FOR STUDENT PACKAGE OPTION ... \n\n\n");
 
         } else if (this.userPackage == "Normal") {
 
+            getContext().getLog().info("Submit Deposit Order id = {} command with package `{}` received with Account id = {}, Bank id = {} and Balance = {} {} on {} ",
+            this.depositId, this.userPackage, this.accountId, this.bankId, this.accountBalance, this.currency, this.date);            
+
             depositOrder.deposit.tell(new DepositVerified(this.depositId, this.accountId, this.date, "VERIFIED!"));
 
-            this.getContext().getSelf().tell(new CreditDepositedAccount(this.depositId, this.accountBalance, this.userPackage, 
-            this.accountId, this.date, this.amount, this.currency));
+            System.out.println("\n\n\n SUBMITTING DEPOSIT ORDER FOR NORMAL PACKAGE OPTION ... \n\n\n");            
 
         } else {
 
