@@ -23,14 +23,14 @@ public class aAccountTest {
     static String externalAcountId = "456690/3489";
     static Double accountBalance = 120950.4990;
     static Double amount = 91500.5090;
-    private static String mainCommand = "Payment";
+    static String mainCommand = "Payment";
     static String userPackage = "Student";
     static long paymentOrderId = 506809102;
     static String bankId = "1209309204930125CZ";
     static String currency = "CZK";
     static String withdrawalId = "89298420/21";
     static String depositId = "04932409/90";
-    private static boolean accountInstruction = true;
+    static boolean accountInstruction = true;
 
     static Date date = new Date(System.currentTimeMillis());
 
