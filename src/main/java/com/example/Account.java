@@ -279,11 +279,13 @@ public class Account extends AbstractBehavior<Account.Command> {
         final String bankId;
         final Date date;
         final String accountId;
-        protected ActorRef<WithdrawalVerified> verify;
-        protected ActorRef<WithdrawalRejected> reject;
+        final String message;
+        final ActorRef<WithdrawalVerified> verify;
+        final ActorRef<WithdrawalRejected> reject;
 
         public SubmitWithdrawalOrder(final Double balance, final Double amount, final long paymentOrderId, final String bankId, 
-                    final Date date, final String accountId) {
+                    final Date date, final String accountId, final String message, final ActorRef<WithdrawalVerified> verify,
+                    final ActorRef<WithdrawalRejected> reject) {
 
                         this.balance = balance;
                         this.amount = amount;
@@ -291,6 +293,9 @@ public class Account extends AbstractBehavior<Account.Command> {
                         this.bankId = bankId;
                         this.date = date;
                         this.accountId = accountId;
+                        this.message = message;
+                        this.verify = verify;
+                        this.reject = reject;
 
         }
     }
@@ -302,11 +307,13 @@ public class Account extends AbstractBehavior<Account.Command> {
         final long paymentOrderId;
         final String bankId;
         final Date date;
-        final String accountId;                
-        protected ActorRef<DepositVerified> deposit;
+        final String accountId;             
+        final String message;   
+        final ActorRef<DepositVerified> deposit;
 
         public SubmitDepositOrder(final Double balance, final Double amount, final long paymentOrderId, final String bankId, 
-                    final Date date, final String accountId) {
+                    final Date date, final String accountId, final String message,
+                    final ActorRef<DepositVerified> deposit) {
 
                         this.balance = balance;
                         this.amount = amount;
@@ -314,6 +321,8 @@ public class Account extends AbstractBehavior<Account.Command> {
                         this.bankId = bankId;
                         this.date = date;
                         this.accountId = accountId;
+                        this.message = message;
+                        this.deposit = deposit;
 
         }
 
@@ -321,18 +330,10 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class WithdrawalVerified {
 
-        final String withdrawalId;
-        final String accountId;
-        final Date date;
-        protected SubmitWithdrawalOrder checkBalance;
         final String replyTo;
 
-        public WithdrawalVerified(final String withdrawalId, final String accountId, 
-                    final Date date, final String replyTo) {
+        public WithdrawalVerified(final String replyTo) {
 
-                        this.withdrawalId = withdrawalId;
-                        this.accountId = accountId;
-                        this.date = date;
                         this.replyTo = replyTo;
 
         }
@@ -340,18 +341,10 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class WithdrawalRejected {
 
-        final String withdrawalId;
-        final String accountId;
-        final Date date;
-        protected SubmitWithdrawalOrder checkBalance;
         final String replyTo;
 
-        public WithdrawalRejected(final String withdrawalId, final String accountId, 
-                    final Date date, final String replyTo) {
+        public WithdrawalRejected(final String replyTo) {
 
-                        this.withdrawalId = withdrawalId;
-                        this.accountId = accountId;
-                        this.date = date;
                         this.replyTo = replyTo;
 
         }
@@ -657,14 +650,20 @@ public class Account extends AbstractBehavior<Account.Command> {
 
             if (this.amount < this.accountBalance) {
 
-                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
+                getContext().getLog().info("Submit Withdrawal Order id = {} command received with Account id = {}, Bank id = {} and Balance = {} {} on {} ",
+                this.withdrawalId, this.accountId, this.bankId, this.accountBalance, this.currency, this.date);
 
-                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
-                this.accountId, this.date, this.amount, this.currency));
+                withdrawOrder.verify.tell(new WithdrawalVerified("VERIFIED!"));
+
+                System.out.println("\n\n\n SUBMITTING WITHDRAWAL ORDER FOR STUDENT PACKAGE OPTION ... \n\n\n");
 
             } else {
+                
+                getContext().getLog().info("WITHDRAWAL ORDER IS REJECTED. NOT PROCESSED!");
 
-                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
+                withdrawOrder.reject.tell(new WithdrawalRejected("REJECTED!"));
+
+                System.out.println("\n\n\n REJECTING WITHDRAWAL SUBMISSION DUE TO INSUFFICIENT BALANCE ... \n\n\n");
 
             }
 
@@ -672,14 +671,20 @@ public class Account extends AbstractBehavior<Account.Command> {
 
             if (this.amount < this.accountBalance) {
 
-                withdrawOrder.verify.tell(new WithdrawalVerified(this.withdrawalId, this.accountId, this.date, "VERIFIED!"));
+                getContext().getLog().info("Submit Withdrawal Order id = {} command received with Account id = {}, Bank id = {} and Balance = {} {} on {} ",
+                this.withdrawalId, this.accountId, this.bankId, this.accountBalance, this.currency, this.date);                
 
-                this.getContext().getSelf().tell(new DebitWithdrawnAccount(this.withdrawalId, this.accountBalance, this.userPackage, 
-                this.accountId, this.date, this.amount, this.currency));                
+                withdrawOrder.verify.tell(new WithdrawalVerified("VERIFIED!"));  
+                
+                System.out.println("\n\n\n SUBMITTING WITHDRAWAL ORDER FOR NORMAL PACKAGE OPTION ... \n\n\n");                
 
             } else {
 
-                withdrawOrder.reject.tell(new WithdrawalRejected(this.withdrawalId, this.accountId, this.date, "REJECTED!"));
+                getContext().getLog().info("WITHDRAWAL ORDER IS REJECTED. NOT PROCESSED!");                
+
+                withdrawOrder.reject.tell(new WithdrawalRejected("REJECTED!"));
+ 
+                System.out.println("\n\n\n REJECTING WITHDRAWAL SUBMISSION DUE TO INSUFFICIENT BALANCE ... \n\n\n");
 
             }
 
