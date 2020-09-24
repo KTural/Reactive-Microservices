@@ -96,7 +96,8 @@ public class BankManager {
             final ActorSystem<Command> payment = ActorSystem.create(Payment.create(accountId, bankId, amount, paymentOrderId,
                     internalAccountInstructed, externalAccountCredited, paymentNetworkConnected), "Payment-actor");
 
-            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(), "Billing-actor");
+            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(accountId, externalAccountId, bankId, currency, amount, 
+            accountBalance, userPackage, paymentOrderId, withdrawalId, depositId), "Billing-actor");
 
             try {
                 System.out.println(">>> PRESS ENTER TO EXIT ACCOUNT ACTOR <<<\n");
@@ -129,8 +130,8 @@ public class BankManager {
             withdrawalId, depositId),
             "Account-actor");                
 
-            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(),
-            "Billing-actor");               
+            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(accountId, externalAccountId, bankId, currency, amount, 
+            accountBalance, userPackage, paymentOrderId, withdrawalId, depositId), "Billing-actor");          
 
             try {
                 System.out.println(">>> PRESS ENTER TO EXIT ACCOUNT ACTOR <<<\n");
