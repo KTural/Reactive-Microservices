@@ -580,6 +580,8 @@ public class Account extends AbstractBehavior<Account.Command> {
                     this.accountBalance = (this.accountBalance
                             - (normalRequestsOrOccurences + this.amount));
 
+                    numberOfPaymentOrderRequests += incrementRequestOrOccurence;
+
                     debitAccount.recordTransactionAmount.tell(new AccountDebited(this.paymentOrderId,
                     this.accountBalance, normalRequestsOrOccurences, "ACCOUNT IS DEBITED!"));
 
@@ -741,15 +743,15 @@ public class Account extends AbstractBehavior<Account.Command> {
     private final String withdrawalId;
     private final String depositId;
 
-    protected long numberOfPaymentOrderRequests;
+    static long numberOfPaymentOrderRequests;
 
-    protected long studentPackagePaymentOrderLimit;
+    static long studentPackagePaymentOrderLimit;
     protected long studentRequestsOrOccurences;
     protected long studentPackagePaymentFee;
 
     protected long incrementRequestOrOccurence;
 
-    protected long normalPackagePaymentOrderLimit;
+    static long normalPackagePaymentOrderLimit;
     protected long normalRequestsOrOccurences;
     protected long normalPackagePaymentFee;
 
