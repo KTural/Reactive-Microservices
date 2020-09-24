@@ -21,15 +21,18 @@ public class Billing extends AbstractBehavior<Account.Command> {
         final String currency;
         protected Double balance;
         protected CompletePaymentOrder billingComplete;
-        protected ActorRef<PaymentOrderFeeCalculated> replyTo;
+        final String message;
+        final ActorRef<PaymentOrderFeeCalculated> replyTo;
   
         public CalculatePaymentOrderFee(final String accountId, final Double amount, final String currency,
-                    Double balance) {
+                    Double balance, final String message, final ActorRef<PaymentOrderFeeCalculated> replyTo) {
 
-                        this.accountId = billingComplete.accountId;
-                        this.amount = billingComplete.amount;
+                        this.accountId = accountId;
+                        this.amount = amount;
                         this.currency = currency;
-                        this.balance = billingComplete.balance;
+                        this.balance = balance;
+                        this.message = message;
+                        this.replyTo = replyTo;
 
         }
     }
@@ -39,7 +42,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
         final String replyTo;
         protected CalculatePaymentOrderFee calculateFee;
 
-        public PaymentOrderFeeCalculated(final String replyTo, Double balance, String currency) {
+        public PaymentOrderFeeCalculated(final String replyTo) {
 
                         this.replyTo = replyTo;
 
@@ -109,11 +112,26 @@ public class Billing extends AbstractBehavior<Account.Command> {
         INSTANCE;
     }
 
-    public static Behavior<Account.Command> create() {
+    final Date date = new Date(System.currentTimeMillis());
 
-        return Behaviors.setup(context -> new Billing(context));
+    public static Behavior<Account.Command> create(String accountId, String externalAccountId, String bankId, String currency, Double amount, 
+                Double accountBalance, String userPackage, long paymentOrderId, String withdrawalId, String depositId) {
+
+        return Behaviors.setup(context -> new Billing(context, accountId, externalAccountId, bankId, currency, amount, accountBalance, userPackage,
+        paymentOrderId, withdrawalId, depositId));
 
     }
+
+    private final String accountId;
+    private final String externalAccountId;
+    private final String bankId;
+    private final String currency;
+    private final Double amount;
+    private Double accountBalance;
+    private final String userPackage;
+    private final long paymentOrderId;
+    private final String withdrawalId;
+    private final String depositId;
 
     protected long numberOfFeeWithdrawals;
     protected long numberOfFeeDeposits;
@@ -129,9 +147,28 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     protected double normalAtmFee;
 
-    private Billing(final ActorContext<Command> context) {
+    protected long studentRequestsOrOccurences;
+    protected long studentPackagePaymentFee;
+
+    protected long normalRequestsOrOccurences;
+    protected long normalPackagePaymentFee;
+
+    private Billing(final ActorContext<Command> context, final String accountId, final String externalAccountId, final String bankId,
+                final String currency, final Double amount, final Double accountBalance, final String userPackage,
+                final long paymentOrderId, final String withdrawalId, final String depositId) {
 
         super(context);
+
+        this.accountId = accountId;
+        this.externalAccountId = externalAccountId;
+        this.bankId = bankId;
+        this.currency = currency;
+        this.amount = amount;
+        this.accountBalance = accountBalance;
+        this.userPackage = userPackage;
+        this.paymentOrderId = paymentOrderId;
+        this.withdrawalId = withdrawalId;
+        this.depositId = depositId;
 
         this.numberOfFeeWithdrawals = 0;
         this.numberOfFeeDeposits = 0;
@@ -147,6 +184,13 @@ public class Billing extends AbstractBehavior<Account.Command> {
         this.normalAtmFee = 0;
 
         this.percentage = 100.00;
+
+        this.studentRequestsOrOccurences = 0;
+        this.studentPackagePaymentFee = 5;
+
+        this.normalRequestsOrOccurences = 0;
+        this.normalPackagePaymentFee = 10;
+
 
         context.getLog().info("Billing actor is created\n");
 
@@ -167,44 +211,117 @@ public class Billing extends AbstractBehavior<Account.Command> {
     private Behavior<Command> onCalculatePaymentOrderFee(final CalculatePaymentOrderFee calculateFee) {
 
         getContext().getLog()
-                .info("Payment Order is now calculated. Interest Rate will be calculated for each P.O requests!\n");
+                .info("Payment Order is now being calculated. Interest Rate will be calculated for each P.O requests!\n");
 
-        if (calculateFee.billingComplete.creditExternal.creditAccount.identify.instruct.userPackage == "Student") {
+        if (this.amount < this.accountBalance) {
 
-            double debitedStudentAmount = ((calculateFee.amount * this.studentInterestRate) / this.percentage)
+            if (this.userPackage == "Student") {
+
+                if (Account.numberOfPaymentOrderRequests <= Account.studentPackagePaymentOrderLimit) {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance - (this.studentRequestsOrOccurences + this.amount));
+
+                    Account.numberOfPaymentOrderRequests += incrementRequestOrOccurences;
+
+                    double debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
+                            * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - debitedStudentAmount;
+
+                    getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Student package!",
+                    debitedStudentAmount, this.currency));
+
+                    calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
+
+                    System.out.println("\n\n\n CALCULATING PAYMENT ORDER FEE ... \n\n\n");
+
+                } else {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.studentRequestsOrOccurences = this.studentRequestsOrOccurences + incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance - (this.studentRequestsOrOccurences * this.studentPackagePaymentFee + this.amount));
+
+                    double debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
+                            * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - debitedStudentAmount; 
+                    
+                    getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Student package!",
+                    debitedStudentAmount, this.currency));
+
+                    calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
+
+                    System.out.println("\n\n\n CALCULATING PAYMENT ORDER FEE ... \n\n\n");                    
+
+                }
+
+            } else if (this.userPackage == "Normal") {
+
+                if (Account.numberOfPaymentOrderRequests <= Account.normalPackagePaymentOrderLimit) {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance - (this.normalRequestsOrOccurences + this.amount));
+
+                    Account.numberOfPaymentOrderRequests += incrementRequestOrOccurences;
+
+                    double debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
+                            * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - debitedNormalAmount;
+
+                    getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Normal package!",
+                    debitedNormalAmount, this.currency));                    
+
+                    calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
+
+                    System.out.println("\n\n\n CALCULATING PAYMENT ORDER FEE ... \n\n\n");         
+                    
+                } else {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.normalRequestsOrOccurences = this.normalRequestsOrOccurences + incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance 
+                            - (this.normalRequestsOrOccurences * this.normalPackagePaymentFee + this.amount));                    
+
+                    double debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
                     * this.numberOfRequests;
 
-            calculateFee.balance = calculateFee.balance - debitedStudentAmount;
+                    this.accountBalance = this.accountBalance - debitedNormalAmount;
 
-            calculateFee.replyTo.tell(new PaymentOrderFeeCalculated(
-                    "{} {} is debited from Account due to Interest Rate for Student package!", debitedStudentAmount,
-                    calculateFee.currency));
+                    getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Normal package!",
+                    debitedNormalAmount, this.currency));                    
 
-        } else if (calculateFee.billingComplete.creditExternal.creditAccount.identify.instruct.userPackage == "Normal") {
+                    calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
 
-            double debitedNormalAmount = ((calculateFee.amount * this.normalInterestRate) / this.percentage)
-                    * this.numberOfRequests;
+                    System.out.println("\n\n\n CALCULATING PAYMENT ORDER FEE ... \n\n\n"); 
 
-            calculateFee.balance = calculateFee.balance - debitedNormalAmount;
+                }
 
-            calculateFee.replyTo.tell(new PaymentOrderFeeCalculated(
-                    "{} {} is debited from Account due to Interest Rate for Normal package!", debitedNormalAmount,
-                    calculateFee.currency));
+            } else {
 
+                getContext().getLog()
+                        .info("ERROR! Payment Order could not be calculated! Please Enter relevant order package!\n\n");
+
+            }
+
+            getContext().getLog().info(String.format("CURRENT BALANCE : %.2f\n", this.accountBalance));
+
+            getContext().getLog().info(String.format(
+                    "TRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %tc | *AMOUNT* - %.2f | *BALANCE* - %.2f %s\n",
+                    this.paymentOrderId, this.accountId, this.bankId, this.externalAccountId,
+                    this.date, this.amount, this.accountBalance, this.currency));
         } else {
 
-            getContext().getLog()
-                    .info("ERROR! Payment Order could not be calculated! Please Enter relevant order package!\n\n");
+            getContext().getLog().info("NOT ENOUGH BALANCE!!!\n");
 
         }
-
-        getContext().getLog().info("Current Balance : {}\n", calculateFee.balance);
-
-        getContext().getLog().info(
-                "TRANSACTION LOG: *PAYMENT ORDER ID* - {} | *CLIENT ACCOUNT ID* - {} | *BANK ID* - {} | *RECEIVER ACCOUNT ID*  - {} |  | *DATE* - {} | *AMOUNT* - {} | *BALANCE* - {} {}\n",
-                calculateFee.billingComplete.paymentOrderId, calculateFee.billingComplete.accountId,
-                calculateFee.billingComplete.bankId, calculateFee.billingComplete.externalAccountId,
-                calculateFee.billingComplete.date, calculateFee.amount, calculateFee.balance, calculateFee.currency);
 
         return this;
 
@@ -213,54 +330,54 @@ public class Billing extends AbstractBehavior<Account.Command> {
     private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
 
         getContext().getLog().info("Current Account Balance : {} {}. Debitting Withdrawn Account\n",
-        debitAccount.balance, debitAccount.currency);
+        this.accountBalance, this.currency);
 
-        if (debitAccount.userPackage == "Student") {
+        if (this.userPackage == "Student") {
 
             if (this.numberOfFeeWithdrawals <= this.studentAtmLimit) {
 
-                debitAccount.balance = debitAccount.balance - (numberOfRequests + debitAccount.amount);
+                this.accountBalance = this.accountBalance - (this.numberOfRequests + this.amount);
 
                 this.numberOfFeeWithdrawals += this.incrementRequestOrOccurences;
 
-                debitAccount.replyTo.tell(new WithdrawalCompleted(debitAccount.withdrawalId, debitAccount.balance, debitAccount.userPackage,
-                debitAccount.accountId, debitAccount.date, debitAccount.amount, "VERIFIED!"));
+                debitAccount.replyTo.tell(new WithdrawalCompleted(this.withdrawalId, this.accountBalance, this.userPackage,
+                this.accountId, this.date, this.amount, "VERIFIED!"));
 
                 getContext().getLog().info("Account with Id - `{}` is debited with withdrawal Id - `{}` for package - `{}` with amount - `{}` on {}",
-                debitAccount.accountId, debitAccount.withdrawalId, debitAccount.userPackage, debitAccount.amount, debitAccount.date);
+                this.accountId, this.withdrawalId, this.userPackage, this.amount, this.date);
 
                 getContext().getLog().info("{} {} is withdrawn. Final Account Balance : {}. STATUS : {}", 
-                this.numberOfRequests + debitAccount.amount, debitAccount.currency, debitAccount.balance, "PROCESSED!");
+                this.numberOfRequests + this.amount, this.currency, this.accountBalance, "PROCESSED!");
 
             } else {
 
                 this.numberOfRequests += incrementRequestOrOccurences;
 
-                debitAccount.balance = debitAccount.balance - (this.numberOfRequests * studentAtmFee + debitAccount.amount);
+                this.accountBalance = this.accountBalance - (this.numberOfRequests * studentAtmFee + this.amount);
 
-                debitAccount.replyTo.tell(new WithdrawalCompleted(debitAccount.withdrawalId, debitAccount.balance, debitAccount.userPackage,
-                debitAccount.accountId, debitAccount.date, debitAccount.amount, "VERIFIED!"));
+                debitAccount.replyTo.tell(new WithdrawalCompleted(this.withdrawalId, this.accountBalance, this.userPackage,
+                this.accountId, this.date, this.amount, "VERIFIED!"));
 
                 getContext().getLog().info("Account with Id - `{}` is debited with withdrawal Id - `{}` for package - `{}` with amount - `{}` on {}",
-                debitAccount.accountId, debitAccount.withdrawalId, debitAccount.userPackage, debitAccount.amount, debitAccount.date);
+                this.accountId, this.withdrawalId, this.userPackage, this.amount, this.date);
 
                 getContext().getLog().info("{} {} is withdrawn. Final Account Balance : {}. STATUS : {}", 
-                this.numberOfRequests * studentAtmFee + debitAccount.amount,debitAccount.currency,debitAccount.balance, "PROCESSED!");            
+                this.numberOfRequests * studentAtmFee + this.amount, this.currency, this.accountBalance, "PROCESSED!");            
 
             }
 
-        } else if (debitAccount.userPackage == "Normal") {
+        } else if (this.userPackage == "Normal") {
 
-            debitAccount.balance = debitAccount.balance - (normalAtmFee + debitAccount.amount);
+            this.accountBalance = this.accountBalance - (normalAtmFee + this.amount);
 
-            debitAccount.replyTo.tell(new WithdrawalCompleted(debitAccount.withdrawalId, debitAccount.balance, debitAccount.userPackage,
-            debitAccount.accountId, debitAccount.date, debitAccount.amount, "VERIFIED!"));
+            debitAccount.replyTo.tell(new WithdrawalCompleted(this.withdrawalId, this.accountBalance, this.userPackage,
+            this.accountId, this.date, this.amount, "VERIFIED!"));
 
             getContext().getLog().info("Account with Id - `{}` is debited with withdrawal Id - `{}` for package - `{}` with amount - `{}` on {}",
-            debitAccount.accountId, debitAccount.withdrawalId, debitAccount.userPackage, debitAccount.amount, debitAccount.date);
+            this.accountId, this.withdrawalId, this.userPackage, this.amount, this.date);
 
             getContext().getLog().info("{} {} is withdrawn. Final Account Balance : {}. STATUS : {}", 
-            this.normalAtmFee + debitAccount.amount,debitAccount.currency,debitAccount.balance, "PROCESSED!");            
+            this.normalAtmFee + this.amount, this.currency, this.accountBalance, "PROCESSED!");            
 
         } else {
 
@@ -275,57 +392,57 @@ public class Billing extends AbstractBehavior<Account.Command> {
     private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
 
         getContext().getLog().info("Current Account Balance : {} {}. Crediting Deposited Account\n",
-        creditAccount.balance, creditAccount.currency);
+        this.accountBalance, this.currency);
 
-        if (creditAccount.userPackage == "Student") {
+        if (this.userPackage == "Student") {
 
             if (this.numberOfFeeDeposits <= this.studentAtmLimit) {
 
-                creditAccount.balance = creditAccount.balance + (creditAccount.amount - numberOfRequests * studentAtmFee);
+                this.accountBalance = this.accountBalance + (this.amount - numberOfRequests * studentAtmFee);
 
                 this.numberOfFeeDeposits += this.incrementRequestOrOccurences;
 
-                creditAccount.replyTo.tell(new DepositCompleted(creditAccount.depositId, creditAccount.balance, creditAccount.userPackage,
-                creditAccount.accountId, creditAccount.date, creditAccount.amount, "VERIFIED!"));
+                creditAccount.replyTo.tell(new DepositCompleted(this.depositId, this.accountBalance, this.userPackage,
+                this.accountId, this.date, this.amount, "VERIFIED!"));
 
                 getContext().getLog().info("Account with Id - `{}` is credited with deposit Id - `{}` for package - `{}` with amount - `{}` on {}",
-                creditAccount.accountId, creditAccount.deposit, creditAccount.userPackage, creditAccount.amount, creditAccount.date);
+                this.accountId, this.depositId, this.userPackage, this.amount, this.date);
 
                 getContext().getLog().info("{} {} is credited. Final Account Balance : {}. STATUS : {}", 
-                (creditAccount.amount - numberOfRequests * studentAtmFee), creditAccount.currency, 
-                creditAccount.balance, "PROCESSED!");
+                (this.amount - numberOfRequests * studentAtmFee), this.currency, 
+                this.accountBalance, "PROCESSED!");
 
             } else {
 
                 this.numberOfRequests += incrementRequestOrOccurences;
 
-                creditAccount.balance = creditAccount.balance + (creditAccount.amount - numberOfRequests * studentAtmFee);
+                this.accountBalance = this.accountBalance + (this.amount - numberOfRequests * studentAtmFee);
 
-                creditAccount.replyTo.tell(new DepositCompleted(creditAccount.depositId, creditAccount.balance, creditAccount.userPackage,
-                creditAccount.accountId, creditAccount.date, creditAccount.amount, "VERIFIED!"));
+                creditAccount.replyTo.tell(new DepositCompleted(this.depositId, this.accountBalance, this.userPackage,
+                this.accountId, this.date, this.amount, "VERIFIED!"));
 
                 getContext().getLog().info("Account with Id - `{}` is credited with deposit Id - `{}` for package - `{}` with amount - `{}` on {}",
-                creditAccount.accountId, creditAccount.deposit, creditAccount.userPackage, creditAccount.amount, creditAccount.date);
+                this.accountId, this.depositId, this.userPackage, this.amount, this.date);
 
                 getContext().getLog().info("{} {} is credited. Final Account Balance : {}. STATUS : {}", 
-                (creditAccount.amount - numberOfRequests * studentAtmFee), creditAccount.currency, 
-                creditAccount.balance, "PROCESSED!");         
+                (this.amount - numberOfRequests * studentAtmFee), this.currency, 
+                this.accountBalance, "PROCESSED!");         
 
             }
 
         } else if (creditAccount.userPackage == "Normal") {
 
-            creditAccount.balance = creditAccount.balance + (creditAccount.amount - normalAtmFee);
+            this.accountBalance = this.accountBalance + (this.amount - normalAtmFee);
 
-            creditAccount.replyTo.tell(new DepositCompleted(creditAccount.depositId, creditAccount.balance, creditAccount.userPackage,
-            creditAccount.accountId, creditAccount.date, creditAccount.amount, "VERIFIED!"));
+            creditAccount.replyTo.tell(new DepositCompleted(this.depositId, this.accountBalance, this.userPackage,
+            this.accountId, this.date, this.amount, "VERIFIED!"));
 
             getContext().getLog().info("Account with Id - `{}` is credited with deposit Id - `{}` for package - `{}` with amount - `{}` on {}",
-            creditAccount.accountId, creditAccount.deposit, creditAccount.userPackage, creditAccount.amount, creditAccount.date);
+            this.accountId, this.depositId, this.userPackage, this.amount, this.date);
 
             getContext().getLog().info("{} {} is credited. Final Account Balance : {}. STATUS : {}", 
-            (creditAccount.amount - numberOfRequests * studentAtmFee), creditAccount.currency, 
-            creditAccount.balance, "PROCESSED!");           
+            (this.amount - numberOfRequests * studentAtmFee), this.currency, 
+            this.accountBalance, "PROCESSED!");           
 
         } else {
 
