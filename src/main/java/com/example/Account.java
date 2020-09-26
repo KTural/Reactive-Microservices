@@ -730,8 +730,8 @@ public class Account extends AbstractBehavior<Account.Command> {
     
     private Behavior<Command> onPostStop() {
 
-        getContext().getLog().info(String.format("Account actor is stopped with :: Account id - %s, balance - %.2f, currency - %s\n",
-        this.accountId, this.accountBalance, this.currency));
+        getContext().getLog().info(String.format("Account actor is stopped with :: Account id - %s, External Account id - %s, Main Command Order - %s, Amount to Process - %.2f %s, Package - %s\n",
+        this.accountId, Account.externalAccountId, this.mainCommand, this.amount, this.currency, this.userPackage));
 
         return Behaviors.stopped();
     }  
