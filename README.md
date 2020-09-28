@@ -38,6 +38,7 @@ $ pip install -r requirements.txt
 # Try upgrading pip:
 $ pip install --upgrade pip
 ```
+
 ### Running the source file
 
 Command:
@@ -56,6 +57,18 @@ Command:
 $ mvn test
 ```
 
+```sh
+# This will run specific test or tests that you specify (its name or path)
+$ mvn test -Dtest=TestName#xyz
+# where TestName is the test class name and xyz is the test method
+# this will run all methods inside class name TestName
+$ mvn test -Dtest=TestName 
+```
+
+```sh
+# For integration tests use it.test=... option instead of test=...
+$ mvn -pl <module-name> -Dit.test=TestCircle#xyz integration-test
+```
 
 ### Project Visualization, Implementation, Architecture and Design details
 
