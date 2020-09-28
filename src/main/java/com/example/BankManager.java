@@ -13,6 +13,7 @@ import akka.actor.typed.ActorSystem;
 
 public class BankManager {
 
+    private static String clientName;
     private static String accountId;
     private static String externalAccountId;
     private static Double accountBalance;
@@ -42,6 +43,11 @@ public class BankManager {
 
     // main program
     public static void main(String[] args) {
+        //Enter client username
+        logger.log(Level.INFO, "ENTER CLIENT USERNAME : ");
+        String user = scanner.nextLine();
+        clientName  = user;
+        // internal account id
         logger.log(Level.INFO, "ENTER INTERNAL ACCOUNT ID : ");
         // Given account id of user
         String id = scanner.nextLine();
@@ -96,8 +102,8 @@ public class BankManager {
             final ActorSystem<Command> payment = ActorSystem.create(Payment.create(accountId, bankId, amount, paymentOrderId,
                     internalAccountInstructed, externalAccountCredited, paymentNetworkConnected), "Payment-actor");
 
-            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(accountId, externalAccountId, bankId, currency, amount, 
-            accountBalance, userPackage, paymentOrderId, withdrawalId, depositId), "Billing-actor");
+            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(clientName, accountId, externalAccountId, bankId, currency, amount, 
+            accountBalance, userPackage, paymentOrderId, withdrawalId, depositId, mainCommand), "Billing-actor");
 
             try {
                 System.out.println(">>> PRESS ENTER TO EXIT ACCOUNT ACTOR <<<\n");
@@ -130,8 +136,8 @@ public class BankManager {
             withdrawalId, depositId),
             "Account-actor");                
 
-            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(accountId, externalAccountId, bankId, currency, amount, 
-            accountBalance, userPackage, paymentOrderId, withdrawalId, depositId), "Billing-actor");          
+            final ActorSystem<Command> billing = ActorSystem.create(Billing.create(clientName, accountId, externalAccountId, bankId, currency, amount, 
+            accountBalance, userPackage, paymentOrderId, withdrawalId, depositId, mainCommand), "Billing-actor");          
 
             try {
                 System.out.println(">>> PRESS ENTER TO EXIT ACCOUNT ACTOR <<<\n");
