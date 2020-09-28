@@ -24,9 +24,9 @@ public class fDepositTest {
     aAccountTest.accountBalance, aAccountTest.amount, aAccountTest.mainCommand, aAccountTest.userPackage, aAccountTest.paymentOrderId,
     aAccountTest.bankId, aAccountTest.currency, aAccountTest.withdrawalId, aAccountTest.depositId));
 
-    private ActorRef<Command> billingActor = testKit.spawn(Billing.create(aAccountTest.accountId, aAccountTest.externalAcountId, aAccountTest.bankId,
+    private ActorRef<Command> billingActor = testKit.spawn(Billing.create(cBillingTest.clientName, aAccountTest.accountId, aAccountTest.externalAcountId, aAccountTest.bankId,
     aAccountTest.currency, aAccountTest.amount, aAccountTest.accountBalance, aAccountTest.userPackage,
-    aAccountTest.paymentOrderId, aAccountTest.withdrawalId, aAccountTest.depositId));
+    aAccountTest.paymentOrderId, aAccountTest.withdrawalId, aAccountTest.depositId, aAccountTest.mainCommand));
 
     @Test 
     public void mTestSubmitDepositOrder() {
@@ -57,5 +57,4 @@ public class fDepositTest {
         assertEquals("DEPOSITED!", depositCompletion.replyTo);
 
     }
-
 }
