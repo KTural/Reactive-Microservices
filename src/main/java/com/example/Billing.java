@@ -12,6 +12,8 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 
+import java.util.HashMap;
+
 public class Billing extends AbstractBehavior<Account.Command> {
 
     public static final class CalculatePaymentOrderFee implements Account.Command {
@@ -122,14 +124,15 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     final Date date = new Date(System.currentTimeMillis());
 
-    public static Behavior<Account.Command> create(String accountId, String externalAccountId, String bankId, String currency, Double amount, 
-                Double accountBalance, String userPackage, long paymentOrderId, String withdrawalId, String depositId) {
+    public static Behavior<Account.Command> create(String clientName, String accountId, String externalAccountId, String bankId, String currency, Double amount, 
+                Double accountBalance, String userPackage, long paymentOrderId, String withdrawalId, String depositId, String mainCommand) {
 
-        return Behaviors.setup(context -> new Billing(context, accountId, externalAccountId, bankId, currency, amount, accountBalance, userPackage,
-        paymentOrderId, withdrawalId, depositId));
+        return Behaviors.setup(context -> new Billing(context, clientName, accountId, externalAccountId, bankId, currency, amount, accountBalance, userPackage,
+        paymentOrderId, withdrawalId, depositId, mainCommand));
 
     }
 
+    private final String clientName;
     private final String accountId;
     private final String externalAccountId;
     private final String bankId;
@@ -140,6 +143,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
     private final long paymentOrderId;
     private final String withdrawalId;
     private final String depositId;
+    private final String mainCommand;
 
     protected long numberOfFeeWithdrawals;
     protected long numberOfFeeDeposits;
@@ -161,12 +165,13 @@ public class Billing extends AbstractBehavior<Account.Command> {
     protected long normalRequestsOrOccurences;
     protected long normalPackagePaymentFee;
 
-    private Billing(final ActorContext<Command> context, final String accountId, final String externalAccountId, final String bankId,
+    private Billing(final ActorContext<Command> context, final String clientName, final String accountId, final String externalAccountId, final String bankId,
                 final String currency, final Double amount, final Double accountBalance, final String userPackage,
-                final long paymentOrderId, final String withdrawalId, final String depositId) {
+                final long paymentOrderId, final String withdrawalId, final String depositId, final String mainCommand) {
 
         super(context);
 
+        this.clientName = clientName;
         this.accountId = accountId;
         this.externalAccountId = externalAccountId;
         this.bankId = bankId;
@@ -177,6 +182,7 @@ public class Billing extends AbstractBehavior<Account.Command> {
         this.paymentOrderId = paymentOrderId;
         this.withdrawalId = withdrawalId;
         this.depositId = depositId;
+        this.mainCommand = mainCommand;
 
         this.numberOfFeeWithdrawals = 0;
         this.numberOfFeeDeposits = 0;
@@ -217,6 +223,8 @@ public class Billing extends AbstractBehavior<Account.Command> {
     }
 
     private Behavior<Command> onCalculatePaymentOrderFee(final CalculatePaymentOrderFee calculateFee) {
+
+        HashMap<String, Object> transactionLog = new HashMap<String, Object>();
 
         getContext().getLog()
                 .info("Payment Order is now being calculated. Interest Rate will be calculated for each P.O requests!\n");
@@ -326,6 +334,28 @@ public class Billing extends AbstractBehavior<Account.Command> {
                     "TRANSACTION LOG: *PAYMENT ORDER ID* - %o | *CLIENT ACCOUNT ID* - %s | *BANK ID* - %s | *RECEIVER ACCOUNT ID*  - %s |  | *DATE* - %tc | *AMOUNT* - %.2f | *BALANCE* - %.2f %s\n",
                     this.paymentOrderId, this.accountId, this.bankId, this.externalAccountId,
                     this.date, this.amount, this.accountBalance, this.currency));
+
+            transactionLog.put("MAIN COMMAND ORDER ", this.mainCommand);
+            transactionLog.put("CLIENT USERNAME ", this.clientName);
+            transactionLog.put("PAYMENT ORDER ID ", this.paymentOrderId);
+            transactionLog.put("CLIENT ACCOUNT ID ", this.accountId);
+            transactionLog.put("BANK ID ", this.bankId);
+            transactionLog.put("RECEIVER ACCOUNT ID ", this.externalAccountId);
+            transactionLog.put("USER PACKAGE ", this.userPackage);
+            transactionLog.put("NUMBER OF PAYMENT ORDER REQUESTS ", this.numberOfRequests);
+            transactionLog.put("DATE", this.date);
+            transactionLog.put("AMOUNT", this.amount);
+            transactionLog.put("ACCOUNT BALANCE", this.accountBalance);
+            transactionLog.put("CURRENCY", this.currency);
+
+            System.out.println("\n\n\n TRANSACTION LOG DETAILS : \n\n\n");
+
+            for (String i : transactionLog.keySet()) {
+                System.out.println(" " + i + " : " + transactionLog.get(i) + " ");
+            }
+
+            System.out.println("\n");
+
         } else {
 
             getContext().getLog().info("NOT ENOUGH BALANCE!!!\n");
@@ -339,6 +369,8 @@ public class Billing extends AbstractBehavior<Account.Command> {
     }
 
     private Behavior<Command> onDebitWithdrawnAccount(final DebitWithdrawnAccount debitAccount) {
+
+        HashMap<String, Object> debitInfoTransactionLog = new HashMap<String, Object>();
 
         getContext().getLog().info(String.format("Current Account Balance : %.2f %s. Debitting Withdrawn Account\n",
         this.accountBalance, this.currency));
@@ -364,9 +396,11 @@ public class Billing extends AbstractBehavior<Account.Command> {
                     getContext().getLog().info(String.format("%.2f %s is withdrawn. Final Account Balance : %.2f. STATUS : %s. NUMBER OF REQUESTS : %o", 
                     this.numberOfRequests + this.amount, this.currency, this.accountBalance, "PROCESSED!", this.numberOfRequests));
 
-                    System.out.println("\n\n\n DEBITING WITHDRAWN ACCOUNT ... \n\n\n");
+                    System.out.println("\n\n\n DEBITING WITHDRAWN ACCOUNT ... \n\n\n");                  
 
                 } else {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
 
                     this.accountBalance = this.accountBalance - (this.numberOfRequests * studentAtmFee + this.amount);
 
@@ -379,9 +413,28 @@ public class Billing extends AbstractBehavior<Account.Command> {
                     getContext().getLog().info(String.format("%.2f %s is withdrawn. Final Account Balance : %.2f. STATUS : %s. NUMBER OF REQUESTS : %o", 
                     this.numberOfRequests * studentAtmFee + this.amount, this.currency, this.accountBalance, "PROCESSED!", this.numberOfRequests));            
 
-                    System.out.println("\n\n\n DEBITING WITHDRAWN ACCOUNT ... \n\n\n");
+                    System.out.println("\n\n\n DEBITING WITHDRAWN ACCOUNT ... \n\n\n");                    
 
                 }
+
+                debitInfoTransactionLog.put("CLIENT USERNAME ", this.clientName);
+                debitInfoTransactionLog.put("WITHDRAWAL ID", this.withdrawalId);
+                debitInfoTransactionLog.put("USER PACKAGE ", this.userPackage);
+                debitInfoTransactionLog.put("ACCOUNT BALANCE ", this.accountBalance);
+                debitInfoTransactionLog.put("AMOUNT ", this.amount);
+                debitInfoTransactionLog.put("ACCOUNT ID ", this.accountId);
+                debitInfoTransactionLog.put("BANK ID ", this.bankId);
+                debitInfoTransactionLog.put("NUMBER OF WITHDRAWAL REQUESTS ", this.numberOfRequests);
+                debitInfoTransactionLog.put("CURRENCY ", this.currency);
+                debitInfoTransactionLog.put("DATE ", this.date);
+
+                System.out.println("\n\n\n TRANSACTION LOG DETAILS : \n\n\n");
+
+                for (String i : debitInfoTransactionLog.keySet()) {
+                    System.out.println(" " + i + " : " + debitInfoTransactionLog.get(i) + " ");
+                }  
+
+                System.out.println("\n");
 
             } else if (this.userPackage == "Normal") {
 
@@ -396,7 +449,25 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 getContext().getLog().info(String.format("%.2f %s is withdrawn. Final Account Balance : %.2f. STATUS : %s", 
                 this.normalAtmFee + this.amount, this.currency, this.accountBalance, "PROCESSED!")); 
                 
-                System.out.println("\n\n\n DEBITING WITHDRAWN ACCOUNT ... \n\n\n");            
+                System.out.println("\n\n\n DEBITING WITHDRAWN ACCOUNT ... \n\n\n"); 
+                
+                debitInfoTransactionLog.put("CLIENT USERNAME ", this.clientName);
+                debitInfoTransactionLog.put("WITHDRAWAL ID", this.withdrawalId);
+                debitInfoTransactionLog.put("USER PACKAGE ", this.userPackage);
+                debitInfoTransactionLog.put("ACCOUNT BALANCE ", this.accountBalance);
+                debitInfoTransactionLog.put("AMOUNT ", this.amount);
+                debitInfoTransactionLog.put("ACCOUNT ID ", this.accountId);
+                debitInfoTransactionLog.put("BANK ID ", this.bankId);
+                debitInfoTransactionLog.put("CURRENCY ", this.currency);
+                debitInfoTransactionLog.put("DATE ", this.date);
+
+                System.out.println("\n\n\n TRANSACTION LOG DETAILS : \n\n\n");
+
+                for (String i : debitInfoTransactionLog.keySet()) {
+                    System.out.println(" " + i + " : " + debitInfoTransactionLog.get(i) + " ");
+                }              
+                
+                System.out.println("\n");
 
             } else {
 
@@ -422,12 +493,16 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onCreditDepositedAccount(final CreditDepositedAccount creditAccount) {
 
+        HashMap<String, Object> creditInfoTransactionLog = new HashMap<String, Object>();
+
         getContext().getLog().info(String.format("Current Account Balance : %.2f %s. Crediting Deposited Account\n",
         this.accountBalance, this.currency));
 
         if (this.userPackage == "Student") {
 
             if (this.numberOfFeeDeposits <= this.studentAtmLimit) {
+
+                this.numberOfRequests += incrementRequestOrOccurences;
 
                 this.accountBalance = this.accountBalance + (this.amount - numberOfRequests * studentAtmFee);
 
@@ -443,8 +518,8 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 (this.amount - numberOfRequests * studentAtmFee), this.currency, 
                 this.accountBalance, "PROCESSED!", this.numberOfRequests));
 
-                System.out.println("\n\n\n CREDITING DEPOSITED ACCOUNT ... \n\n\n");
-
+                System.out.println("\n\n\n CREDITING DEPOSITED ACCOUNT ... \n\n\n");            
+                
             } else {
 
                 this.numberOfRequests += incrementRequestOrOccurences;
@@ -461,9 +536,28 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 (this.amount - numberOfRequests * studentAtmFee), this.currency, 
                 this.accountBalance, "PROCESSED!", this.numberOfRequests));
                 
-                System.out.println("\n\n\n CREDITING DEPOSITED ACCOUNT ... \n\n\n");
+                System.out.println("\n\n\n CREDITING DEPOSITED ACCOUNT ... \n\n\n");                
 
             }
+
+            creditInfoTransactionLog.put("CLIENT USERNAME ", this.clientName);
+            creditInfoTransactionLog.put("DEPOSIT ID", this.depositId);
+            creditInfoTransactionLog.put("USER PACKAGE ", this.userPackage);
+            creditInfoTransactionLog.put("ACCOUNT BALANCE ", this.accountBalance);
+            creditInfoTransactionLog.put("AMOUNT ", this.amount);
+            creditInfoTransactionLog.put("ACCOUNT ID ", this.accountId);
+            creditInfoTransactionLog.put("BANK ID ", this.bankId);
+            creditInfoTransactionLog.put("NUMBER OF DEPOSIT REQUESTS ", this.numberOfRequests);
+            creditInfoTransactionLog.put("CURRENCY ", this.currency);
+            creditInfoTransactionLog.put("DATE ", this.date);
+
+            System.out.println("\n\n\n TRANSACTION LOG DETAILS : \n\n\n");
+
+            for (String i : creditInfoTransactionLog.keySet()) {
+                System.out.println(" " + i + " : " + creditInfoTransactionLog.get(i) + " ");
+            }  
+
+            System.out.println("\n");
 
         } else if (creditAccount.userPackage == "Normal") {
 
@@ -480,6 +574,24 @@ public class Billing extends AbstractBehavior<Account.Command> {
             this.accountBalance, "PROCESSED!"));           
 
             System.out.println("\n\n\n CREDITING DEPOSITED ACCOUNT ... \n\n\n");
+
+            creditInfoTransactionLog.put("CLIENT USERNAME ", this.clientName);
+            creditInfoTransactionLog.put("DEPOSIT ID", this.depositId);
+            creditInfoTransactionLog.put("USER PACKAGE ", this.userPackage);
+            creditInfoTransactionLog.put("ACCOUNT BALANCE ", this.accountBalance);
+            creditInfoTransactionLog.put("AMOUNT ", this.amount);
+            creditInfoTransactionLog.put("ACCOUNT ID ", this.accountId);
+            creditInfoTransactionLog.put("BANK ID ", this.bankId);
+            creditInfoTransactionLog.put("CURRENCY ", this.currency);
+            creditInfoTransactionLog.put("DATE ", this.date);
+
+            System.out.println("\n\n\n TRANSACTION LOG DETAILS : \n\n\n");
+
+            for (String i : creditInfoTransactionLog.keySet()) {
+                System.out.println(" " + i + " : " + creditInfoTransactionLog.get(i) + " ");
+            }  
+
+            System.out.println("\n");
 
         } else {
 
