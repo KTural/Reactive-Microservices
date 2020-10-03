@@ -14,6 +14,10 @@ import akka.actor.typed.javadsl.Receive;
 
 import java.util.HashMap;
 
+import java.util.Calendar;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
 public class Billing extends AbstractBehavior<Account.Command> {
 
     public static final class CalculatePaymentOrderFee implements Account.Command {
@@ -68,15 +72,15 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 final String accountId, final Date date, final Double amount, final String currency,
                 final String message, final ActorRef<WithdrawalCompleted> replyTo) {
 
-            this.withdrawalId = withdrawalId;
-            this.balance = balance;
-            this.userPackage = userPackage;
-            this.accountId = accountId;
-            this.date = date;
-            this.amount = amount;
-            this.currency = currency;
-            this.message = message;
-            this.replyTo = replyTo;
+                        this.withdrawalId = withdrawalId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.amount = amount;
+                        this.currency = currency;
+                        this.message = message;
+                        this.replyTo = replyTo;
 
         }
 
@@ -99,22 +103,50 @@ public class Billing extends AbstractBehavior<Account.Command> {
                 final String accountId, final Date date, final Double amount, final String currency,
                 final String message, final ActorRef<DepositCompleted> replyTo) {
 
-            this.depositId = depositId;
-            this.balance = balance;
-            this.userPackage = userPackage;
-            this.accountId = accountId;
-            this.date = date;
-            this.amount = amount;
-            this.currency = currency;
-            this.message = message;
-            this.replyTo = replyTo;
+                        this.depositId = depositId;
+                        this.balance = balance;
+                        this.userPackage = userPackage;
+                        this.accountId = accountId;
+                        this.date = date;
+                        this.amount = amount;
+                        this.currency = currency;
+                        this.message = message;
+                        this.replyTo = replyTo;
 
         }
     }
 
     public static final class CalculateEndOfMonthBill implements Account.Command {
 
-        protected ActorRef<EndOfMonthBillCalculated> calculateBill;
+        final String accountId;
+        final Double amount;
+        final String currency;
+        final long paymentOrderId;
+        protected Double balance;
+        final String withdrawalId;
+        final String depositId;
+        final Date date;
+        final String userPackage;
+        final String message;
+        final ActorRef<EndOfMonthBillCalculated> calculateBill;
+
+        public CalculateEndOfMonthBill(final String accountId, final Double amount, final String currency,
+                final long paymentOrderId, Double balance, final String withdrawalId, final String depositId, 
+                final Date date, final String userPackage, final String message, final ActorRef<EndOfMonthBillCalculated> calculateBill) {
+
+                        this.accountId = accountId;
+                        this.amount = amount;
+                        this.currency = currency;
+                        this.paymentOrderId = paymentOrderId;
+                        this.balance = balance;
+                        this.withdrawalId = withdrawalId;
+                        this.depositId = depositId;
+                        this.date = date;
+                        this.userPackage = userPackage;
+                        this.message = message;
+                        this.calculateBill = calculateBill;
+
+                }
 
     }
 
@@ -148,6 +180,8 @@ public class Billing extends AbstractBehavior<Account.Command> {
     protected long numberOfFeeWithdrawals;
     protected long numberOfFeeDeposits;
     protected long numberOfRequests;
+    protected long numberOfWithdrawRequests;
+    protected long numberOfDepositRequests;
 
     protected double studentInterestRate;
     protected double normalInterestRate;
@@ -164,6 +198,11 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     protected long normalRequestsOrOccurences;
     protected long normalPackagePaymentFee;
+
+    protected Double debitedStudentAmount;
+    protected Double debitedNormalAmount;
+    protected Double withdrawAmount;
+    protected Double depositAmount;
 
     private Billing(final ActorContext<Command> context, final String clientName, final String accountId, final String externalAccountId, final String bankId,
                 final String currency, final Double amount, final Double accountBalance, final String userPackage,
@@ -187,6 +226,8 @@ public class Billing extends AbstractBehavior<Account.Command> {
         this.numberOfFeeWithdrawals = 0;
         this.numberOfFeeDeposits = 0;
         this.numberOfRequests = 0;
+        this.numberOfWithdrawRequests = 0;
+        this.numberOfDepositRequests = 0;
 
         this.studentInterestRate = 1.5;
         this.normalInterestRate = 0.5;
@@ -241,13 +282,13 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
                     Account.numberOfPaymentOrderRequests += incrementRequestOrOccurences;
 
-                    double debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
+                    this.debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
                             * this.numberOfRequests;
 
-                    this.accountBalance = this.accountBalance - debitedStudentAmount;
+                    this.accountBalance = this.accountBalance - this.debitedStudentAmount;
 
                     getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Student package!",
-                    debitedStudentAmount, this.currency));
+                    this.debitedStudentAmount, this.currency));
 
                     calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
 
@@ -261,13 +302,13 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
                     this.accountBalance = (this.accountBalance - (this.studentRequestsOrOccurences * this.studentPackagePaymentFee + this.amount));
 
-                    double debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
+                    this.debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
                             * this.numberOfRequests;
 
-                    this.accountBalance = this.accountBalance - debitedStudentAmount; 
+                    this.accountBalance = this.accountBalance - this.debitedStudentAmount; 
                     
                     getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Student package!",
-                    debitedStudentAmount, this.currency));
+                    this.debitedStudentAmount, this.currency));
 
                     calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
 
@@ -285,13 +326,13 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
                     Account.numberOfPaymentOrderRequests += incrementRequestOrOccurences;
 
-                    double debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
+                    this.debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
                             * this.numberOfRequests;
 
-                    this.accountBalance = this.accountBalance - debitedNormalAmount;
+                    this.accountBalance = this.accountBalance - this.debitedNormalAmount;
 
                     getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Normal package!",
-                    debitedNormalAmount, this.currency));                    
+                    this.debitedNormalAmount, this.currency));                    
 
                     calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
 
@@ -306,13 +347,13 @@ public class Billing extends AbstractBehavior<Account.Command> {
                     this.accountBalance = (this.accountBalance 
                             - (this.normalRequestsOrOccurences * this.normalPackagePaymentFee + this.amount));                    
 
-                    double debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
+                    this.debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
                     * this.numberOfRequests;
 
-                    this.accountBalance = this.accountBalance - debitedNormalAmount;
+                    this.accountBalance = this.accountBalance - this.debitedNormalAmount;
 
                     getContext().getLog().info(String.format("%.2f %s is debited from Account due to Interest Rate for Normal package!",
-                    debitedNormalAmount, this.currency));                    
+                    this.debitedNormalAmount, this.currency));                    
 
                     calculateFee.replyTo.tell(new PaymentOrderFeeCalculated("P.O FEE IS CALCULATED!"));
 
@@ -607,7 +648,466 @@ public class Billing extends AbstractBehavior<Account.Command> {
 
     private Behavior<Command> onCalculateEndOfMonthBill(final CalculateEndOfMonthBill calculateMonthly) {
 
-        // to be done
+        HashMap<String, Object> endOfMonthBill = new HashMap<String, Object>();
+
+        // OVERALL BILL FOR PAYMENT ORDER (STUDENT OR NORMAL PACKAGES)
+
+        if (this.amount < this.accountBalance) {
+
+            if (this.userPackage == "Student") {
+
+                if (Account.numberOfPaymentOrderRequests <= Account.studentPackagePaymentOrderLimit) {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance - (this.studentRequestsOrOccurences + this.amount));
+
+                    Account.numberOfPaymentOrderRequests += incrementRequestOrOccurences;
+
+                    this.debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
+                            * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - this.debitedStudentAmount;
+
+                } else {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.studentRequestsOrOccurences = this.studentRequestsOrOccurences + incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance - (this.studentRequestsOrOccurences * this.studentPackagePaymentFee + this.amount));
+
+                    this.debitedStudentAmount = ((this.amount * this.studentInterestRate) / this.percentage)
+                            * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - this.debitedStudentAmount;                   
+
+                }
+
+            } else if (this.userPackage == "Normal") {
+
+                if (Account.numberOfPaymentOrderRequests <= Account.normalPackagePaymentOrderLimit) {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance - (this.normalRequestsOrOccurences + this.amount));
+
+                    Account.numberOfPaymentOrderRequests += incrementRequestOrOccurences;
+
+                    this.debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
+                            * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - this.debitedNormalAmount;    
+                    
+                } else {
+
+                    this.numberOfRequests += incrementRequestOrOccurences;
+
+                    this.normalRequestsOrOccurences = this.normalRequestsOrOccurences + incrementRequestOrOccurences;
+
+                    this.accountBalance = (this.accountBalance 
+                            - (this.normalRequestsOrOccurences * this.normalPackagePaymentFee + this.amount));                    
+
+                    this.debitedNormalAmount = ((this.amount * this.normalInterestRate) / this.percentage)
+                    * this.numberOfRequests;
+
+                    this.accountBalance = this.accountBalance - this.debitedNormalAmount;
+
+                }
+
+            } else {
+
+                getContext().getLog()
+                        .info("ERROR! Please Enter relevant order package!\n\n");
+                
+                System.out.println("\n\n\n FAILING ... \n\n\n");
+            }
+
+            System.out.println("\n");
+
+        } else {
+
+            getContext().getLog().info("NOT ENOUGH BALANCE!!!\n");
+
+            System.out.println("\n\n\n FAILING ... \n\n\n");
+
+        }
+
+
+        // OVERALL BILL FOR WITHDRAWAL ORDER (STUDENT OR NORMAL PACKAGES)
+
+        if (this.amount < this.accountBalance) {
+
+            if (this.userPackage == "Student") {
+
+                if (this.numberOfFeeWithdrawals <= this.studentAtmLimit) {
+
+                    this.numberOfWithdrawRequests += incrementRequestOrOccurences;
+
+                    this.accountBalance = this.accountBalance - (this.numberOfWithdrawRequests + this.amount);
+
+                    this.withdrawAmount = (this.numberOfWithdrawRequests + this.amount);
+
+                    this.numberOfFeeWithdrawals += this.incrementRequestOrOccurences;                
+
+                } else {
+
+                    this.numberOfWithdrawRequests += incrementRequestOrOccurences;
+
+                    this.accountBalance = this.accountBalance - (this.numberOfWithdrawRequests * studentAtmFee + this.amount);                   
+
+                    this.withdrawAmount = (this.numberOfWithdrawRequests * studentAtmFee + this.amount); 
+                }
+
+                System.out.println("\n");
+
+            } else if (this.userPackage == "Normal") {
+
+                this.accountBalance = this.accountBalance - (normalAtmFee + this.amount);   
+                
+                this.withdrawAmount = (normalAtmFee + this.amount); 
+                
+                System.out.println("\n");
+
+            } else {
+
+                getContext().getLog().info("ERROR! PLEASE, ENTER VALID PACKAGE NAME!\n");
+
+                System.out.println("\n\n\n FAILING ...\n\n\n");
+
+            }
+        } else {
+
+                getContext().getLog().info("NOT ENOUGH BALANCE TO PROCESS FURTHER!\n");
+
+                System.out.println("\n\n\n FAILING WITHDRAWING ACCOUNT ...\n\n\n");
+
+        }
+
+        // OVERALL BILL FOR DEPOSIT ORDER (STUDENT OR NORMAL)
+
+        if (this.userPackage == "Student") {
+
+            if (this.numberOfFeeDeposits <= this.studentAtmLimit) {
+
+                this.numberOfDepositRequests += incrementRequestOrOccurences;
+
+                this.accountBalance = this.accountBalance + (this.amount - numberOfDepositRequests * studentAtmFee);
+
+                this.depositAmount = (this.amount - numberOfDepositRequests * studentAtmFee);
+
+                this.numberOfFeeDeposits += this.incrementRequestOrOccurences;           
+                
+            } else {
+
+                this.numberOfDepositRequests += incrementRequestOrOccurences;
+
+                this.accountBalance = this.accountBalance + (this.amount - numberOfDepositRequests * studentAtmFee);   
+                
+                this.depositAmount = (this.amount - numberOfDepositRequests * studentAtmFee);  
+
+            }
+
+            System.out.println("\n");
+
+        } else if (this.userPackage == "Normal") {
+
+            this.accountBalance = this.accountBalance + (this.amount - normalAtmFee); 
+
+            this.depositAmount = (this.amount - normalAtmFee); 
+
+            System.out.println("\n");
+
+        } else {
+
+            getContext().getLog().info("ERROR! PLEASE, ENTER VALID PACKAGE NAME!\n");
+
+            System.out.println("\n\n\n FAILING ...\n\n\n");
+
+        }                
+
+        endOfMonthBill.put("MAIN COMMAND ORDER ", this.mainCommand);
+        endOfMonthBill.put("CLIENT USERNAME ", this.clientName);
+        endOfMonthBill.put("PAYMENT ORDER ID ", this.paymentOrderId);
+        endOfMonthBill.put("WITHDRAWAL ID", this.withdrawalId);
+        endOfMonthBill.put("DEPOSIT ID", this.depositId);
+        endOfMonthBill.put("ACCOUNT ID ", this.accountId);
+        endOfMonthBill.put("RECEIVER ACCOUNT ID ", this.externalAccountId);
+        endOfMonthBill.put("USER PACKAGE ", this.userPackage);
+        endOfMonthBill.put("ACCOUNT BALANCE ", this.accountBalance);
+        endOfMonthBill.put("REQUESTED AMOUNT ", this.amount);
+        endOfMonthBill.put("BANK ID ", this.bankId);      
+        endOfMonthBill.put("NUMBER OF PAYMENT ORDER REQUESTS ", this.numberOfRequests); 
+        endOfMonthBill.put("NUMBER OF WITHDRAWAL REQUESTS ", this.numberOfRequests);
+        endOfMonthBill.put("NUMBER OF DEPOSIT REQUESTS ", this.numberOfRequests);
+        endOfMonthBill.put("DEBITED STUDENT PACKAGE AMOUNT ", this.debitedStudentAmount);
+        endOfMonthBill.put("DEBITED NORMAL PACKAGE AMOUNT ", this.debitedNormalAmount);
+        endOfMonthBill.put("WITHDRAWN AMOUNT ", this.withdrawAmount);
+        endOfMonthBill.put("DEPOSITED AMOUNT ", this.depositAmount);
+        endOfMonthBill.put("CURRENCY ", this.currency);
+        endOfMonthBill.put("DATE ", this.date);;
+
+        Calendar cal = Calendar.getInstance();
+
+        Date billingDate = new Date();
+
+        LocalDate localDate = billingDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        
+        int currentMonth = localDate.getMonthValue();
+        int currentDay = localDate.getDayOfMonth();
+
+        int lastDayOfMonth = cal.getActualMaximum(Calendar.DATE);
+
+        switch (currentMonth) {
+
+            case 1:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n JANUARY. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }
+
+            case 2:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n FEBRUARY. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }  
+                
+            case 3:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n MARCH. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }    
+
+            case 4:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n APRIL. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }
+                
+            case 5:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n MAY. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }
+                
+            case 6:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n JUNE. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }  
+                
+            case 7:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n JULY. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }  
+                
+            case 8:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n AUGUST. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }  
+                
+            case 9:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n SEPTEMBER. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }  
+                
+            case 10:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n OCTOBER. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }  
+                
+            case 11:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n NOVEMBER. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }   
+                
+            case 12:
+
+                if (currentDay == lastDayOfMonth) {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("END OF MONTH BILL IS CALCULATED!"));
+
+                    System.out.println("\n\n\n DECEMBER. END OF MONTH BILL REPORT ... \n\n\n");
+
+                    for (String i : endOfMonthBill.keySet()) {
+
+                        System.out.println(" " + i + " : " + endOfMonthBill.get(i) + " ");
+
+                    } 
+
+                } else {
+
+                    calculateMonthly.calculateBill.tell(new EndOfMonthBillCalculated("VERIFIED!"));
+
+                    break;
+
+                }    
+                
+            default:
+
+                System.out.println("\n INVALID MONTH \n");
+
+        }
+
         return this;
 
     }
