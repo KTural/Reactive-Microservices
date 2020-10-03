@@ -420,7 +420,11 @@ public class Account extends AbstractBehavior<Account.Command> {
 
     public static final class EndOfMonthBillCalculated {
 
-        public EndOfMonthBillCalculated() {
+        final String replyTo;
+
+        public EndOfMonthBillCalculated(final String replyTo) {
+
+                        this.replyTo = replyTo;
 
         }
 

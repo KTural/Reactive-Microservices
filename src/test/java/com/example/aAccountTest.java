@@ -22,7 +22,7 @@ public class aAccountTest {
     static String accountId = "230910/0609";
     static String externalAcountId = "456690/3489";
     static Double accountBalance = 120950.4990;
-    static Double amount = 91500.5090;
+    static Double amount = 9150.5090;
     static String mainCommand = "Payment";
     static String userPackage = "Student";
     static long paymentOrderId = 506809102;
