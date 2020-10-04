@@ -7,11 +7,94 @@ import java.util.logging.Logger;
 
 import com.example.Account.*;
 
-// # reactive-account
-
+import akka.actor.typed.javadsl.ActorContext;
+import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
 
-public class BankManager {
+// # reactive-account
+
+import akka.actor.typed.Behavior;
+import akka.actor.typed.PostStop;
+import akka.actor.typed.javadsl.AbstractBehavior;
+import akka.actor.typed.javadsl.Behaviors;
+import akka.actor.typed.javadsl.Receive;
+
+public class BankManager extends AbstractBehavior<Account.Command> {
+
+    public static final class InstructBankManager implements Account.Command {
+
+        final String message;
+        final ActorRef<BankManagerInstructed> instruct;
+
+        public InstructBankManager(final String message, final ActorRef<BankManagerInstructed> instruct) {
+
+                this.message = message;
+                this.instruct = instruct;
+
+        }
+
+    }
+
+    public static final class BankManagerInstructed {
+
+        final String replyTo;
+
+        public BankManagerInstructed(final String replyTo) {
+
+                this.replyTo = replyTo;
+
+        }
+
+    }
+
+    static enum Passivate implements Account.Command {
+
+        INSTANCE
+
+    }
+
+    public static Behavior<Account.Command> create() {
+
+        return Behaviors.setup(context -> new BankManager(context));
+
+    }
+
+    private BankManager(final ActorContext<Account.Command> context) {
+
+        super(context);
+
+        context.getLog().info(" Bank Manager is started \n");
+
+    }
+
+    @Override
+    public Receive<Account.Command> createReceive() {
+
+        return newReceiveBuilder().onMessage(InstructBankManager.class, this::onInstructBankManager)
+        .onMessage(Passivate.class, m -> Behaviors.stopped()).onSignal(PostStop.class, signal -> onPostStop())
+        .build();
+
+    }
+
+    private BankManager onInstructBankManager(final InstructBankManager bankManager) {
+
+        getContext().getLog().info(" BANK MANAGER IS INSTRUCTED \n");
+
+        bankManager.instruct.tell(new BankManagerInstructed("VERIFIED!"));
+
+        System.out.println("\n\n\n INSTRUCTING BANK MANAGER ... \n\n\n");
+
+        return this;
+
+    }
+
+
+    private Behavior<Account.Command> onPostStop() {
+        
+        return Behaviors.stopped();
+
+}    
+ 
 
     private static String clientName;
     private static String accountId;
