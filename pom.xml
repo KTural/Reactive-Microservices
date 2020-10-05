@@ -61,5 +61,6 @@
                 </configuration>
             </plugin>
         </plugins>
+        <finalName>reactive-account</finalName>
     </build>
 </project>
