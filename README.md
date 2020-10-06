@@ -103,3 +103,12 @@ $ mvn -pl <module-name> -Dit.test=TestCircle#xyz integration-test
 
 
 ![Actors Description](./images/actor-view.png "Actors Description")
+
+# References
+- https://akka.io/docs/
+- https://docs.docker.com/
+- https://stackoverflow.com/search?q=akka%20actor
+- https://academy.lightbend.com/
+- https://cognitiveclass.ai/?s=reactive
+- https://github.com/akka/akka
+
