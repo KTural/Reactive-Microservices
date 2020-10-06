@@ -70,6 +70,22 @@ $ mvn test -Dtest=TestName
 $ mvn -pl <module-name> -Dit.test=TestCircle#xyz integration-test
 ```
 
+### Deployment
+
+```sh
+# reactive-account.jar exists in target which contains src, target, maven dependencies, jre system library
+
+# Creating docker image:
+$ docker build -f Dockerfile -t reactive-account .
+
+# List images
+$ docker images
+
+# Running docker image
+$ docker run -p <port_number>:<port_number> reactive-account
+
+```
+
 ### Project Visualization, Implementation, Architecture and Design details
 
 ![Keys](./images/keys.png "Keys")
@@ -103,3 +119,11 @@ $ mvn -pl <module-name> -Dit.test=TestCircle#xyz integration-test
 
 
 ![Actors Description](./images/actor-view.png "Actors Description")
+
+# References
+- https://akka.io/docs/
+- https://docs.docker.com/
+- https://stackoverflow.com/search?q=akka%20actor
+- https://academy.lightbend.com/
+- https://cognitiveclass.ai/?s=reactive
+- https://github.com/akka/akka
