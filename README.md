@@ -127,7 +127,4 @@ $ docker run -p <port_number>:<port_number> reactive-account
 - https://academy.lightbend.com/
 - https://cognitiveclass.ai/?s=reactive
 - https://github.com/akka/akka
-<<<<<<< HEAD
-=======
 
->>>>>>> 43da27f72a6aaba7016fc783007080bae2889b89
